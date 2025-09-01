@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Figurdle Web App
+
+A daily historical character guessing game built with Next.js and React.
 
 ## Getting Started
 
@@ -15,6 +17,22 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+Make sure your FastAPI backend is running on port 8080 for the app to work correctly.
+
+## Features
+
+- Daily historical character puzzles
+- Progressive hint system
+- Clean, responsive UI with Tailwind CSS
+- Real-time guess validation
+
+## Tech Stack
+
+- Next.js 15 with App Router
+- React with TypeScript
+- Tailwind CSS
+- FastAPI backend integration
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

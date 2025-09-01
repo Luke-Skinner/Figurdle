@@ -18,8 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Dev convenience (for SQLite). We'll switch to Alembic later.
-Base.metadata.create_all(bind=engine)
+# Database migrations are now handled by Alembic
+# Run: alembic upgrade head
 
 def today_pst() -> date:
     return datetime.now(pytz.timezone("America/Los_Angeles")).date()

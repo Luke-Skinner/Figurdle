@@ -88,15 +88,15 @@ export default function Home() {
         </div>
       )}
 
-      <form onSubmit={onSubmit} className="flex gap-2">
+      <form onSubmit={onSubmit} className="flex gap-3">
         <input
-          className="flex-1 rounded-xl border px-3 py-2"
+          className="flex-1 rounded-xl border-2 border-gray-300 px-4 py-3 text-lg text-black focus:border-blue-500 focus:outline-none"
           placeholder="Enter your guess…"
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
         />
         <button
-          className="rounded-xl px-4 py-2 border shadow disabled:opacity-50"
+          className="rounded-xl px-6 py-3 bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           disabled={submitting || !guess.trim() || !puzzle}
         >
           {submitting ? "Checking…" : "Submit"}
@@ -104,17 +104,25 @@ export default function Home() {
       </form>
 
       {result && (
-        <div className={`p-3 rounded-xl ${result.correct ? "bg-green-100" : "bg-yellow-100"}`}>
-          {result.correct ? "Correct!" : "Try again."}
+        <div className={`p-4 rounded-xl border-2 ${
+          result.correct 
+            ? "bg-green-50 border-green-200 text-green-800" 
+            : "bg-orange-50 border-orange-200 text-orange-800"
+        }`}>
+          <div className="font-semibold text-lg">
+            {result.correct ? "🎉 Correct!" : "🤔 Try again"}
+          </div>
           {/* Show normalized answer when correct or when backend provides it */}
           {result.normalized_answer && (
-            <div className="mt-1 text-sm text-gray-700">
-              Normalized: {result.normalized_answer}
+            <div className="mt-2 text-sm font-medium">
+              Answer: <span className="font-bold">{result.normalized_answer}</span>
             </div>
           )}
           {/* If a hint was revealed this round, echo it prominently */}
           {result.reveal_next_hint && result.next_hint && (
-            <div className="mt-1 text-sm italic">New hint: {result.next_hint}</div>
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 text-sm">
+              💡 <strong>New hint:</strong> {result.next_hint}
+            </div>
           )}
         </div>
       )}

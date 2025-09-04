@@ -4,8 +4,12 @@ from .db import Base, engine, SessionLocal
 from .models import Puzzle
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
+from .ai import generate_daily_character, CharacterGenerationError
 from datetime import datetime, date
 import pytz, hmac, hashlib, json
+import logging
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Figurdle API", version="1.0.0")
 
@@ -34,28 +38,52 @@ def health():
 
 @app.post("/admin/rotate")
 def rotate():
-    """Dev-only stub: seeds today's puzzle."""
+    """Generate today's puzzle using AI character generation."""
     with SessionLocal() as db:
-        if db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).first():
-            return {"status": "exists"}
-        demo = Puzzle(
-            puzzle_date=today_pst(),
-            answer="Napoleon Bonaparte",
-            aliases=["Napoleon", "Napoléon Bonaparte"],
-            hints=[
-                "I rose to prominence during turbulent times in Europe.",
-                "My career began in the military.",
-                "I became a leader of my nation after a revolution.",
-                "I crowned myself ruler and expanded my empire across Europe.",
-                "A disastrous campaign in Russia marked my decline.",
-                "I was exiled twice; the second time to an island in the South Atlantic.",
-                "I was finally defeated at Waterloo."
-            ],
-            source_urls=["https://en.wikipedia.org/wiki/Napoleon"]
-        )
-        db.add(demo)
-        db.commit()
-        return {"status": "created"}
+        # Check if today's puzzle already exists
+        existing_puzzle = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).first()
+        if existing_puzzle:
+            logger.info(f"Puzzle already exists for {today_pst()}: {existing_puzzle.answer}")
+            return {"status": "exists", "character": existing_puzzle.answer}
+        
+        try:
+            # Generate new character using AI
+            logger.info("Generating new character using AI...")
+            character_data = generate_daily_character()
+            
+            # Create puzzle from AI-generated data
+            new_puzzle = Puzzle(
+                puzzle_date=today_pst(),
+                answer=character_data["answer"],
+                aliases=character_data["aliases"],
+                hints=character_data["hints"],
+                source_urls=character_data["source_urls"]
+            )
+            
+            db.add(new_puzzle)
+            db.commit()
+            
+            logger.info(f"Successfully created new puzzle: {character_data['answer']}")
+            return {
+                "status": "created",
+                "character": character_data["answer"],
+                "aliases_count": len(character_data["aliases"]),
+                "hints_count": len(character_data["hints"])
+            }
+            
+        except CharacterGenerationError as e:
+            logger.error(f"AI character generation failed: {e}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to generate character: {str(e)}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error during puzzle creation: {e}")
+            db.rollback()
+            raise HTTPException(
+                status_code=500,
+                detail="Internal server error during puzzle creation"
+            )
 
 @app.get("/puzzle/today", response_model=PublicPuzzle)
 def get_puzzle_today():

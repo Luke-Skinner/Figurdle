@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     # Google Cloud specific settings
     GOOGLE_CLOUD_PROJECT: str = ""
     INSTANCE_CONNECTION_NAME: str = ""
-    DB_USER: str = "postgres"
+    DB_USER: str = "figurdle-user"
     DB_PASS: str = ""
     DB_NAME: str = "figurdle"
     

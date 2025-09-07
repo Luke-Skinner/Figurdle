@@ -34,7 +34,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Database migrations are now handled by Alembic
+# Database migrations are handled by Alembic
 # Run: alembic upgrade head
 
 def today_pst() -> date:

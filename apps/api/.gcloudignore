@@ -21,6 +21,9 @@ venv/
 *.md
 README*
 
+# Deployment scripts
+redeploy.sh
+
 # IDE files
 .vscode/
 .idea/

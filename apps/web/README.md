@@ -1,6 +1,6 @@
 # Figurdle Web App
 
-A daily historical character guessing game built with Next.js and React.
+A daily historical character guessing game built with Next.js and React. Players guess historical characters based on AI-generated progressive hints.
 
 ## Getting Started
 
@@ -18,7 +18,7 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Make sure your FastAPI backend is running on port 8080 for the app to work correctly.
+Make sure your FastAPI backend is running on port 8080 for local development, or set `NEXT_PUBLIC_API_URL` to point to your deployed API.
 
 ## Features
 
@@ -34,21 +34,45 @@ Make sure your FastAPI backend is running on port 8080 for the app to work corre
 - Tailwind CSS
 - FastAPI backend integration
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── page.tsx      # Main game interface
+│   └── layout.tsx    # Root layout
+└── lib/
+    └── api.ts        # API integration
+```
 
-## Learn More
+## Environment Variables
 
-To learn more about Next.js, take a look at the following resources:
+For local development, create `.env.local`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8080
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+For production deployment on Vercel:
+
+```bash
+NEXT_PUBLIC_API_URL=https://your-api-service.run.app
+```
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Connect Repository**: Import your GitHub repo in Vercel dashboard
+2. **Set Root Directory**: `apps/web`
+3. **Environment Variables**: Set `NEXT_PUBLIC_API_URL` to your API endpoint
+4. **Deploy**: Vercel will automatically build and deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See the main [DEPLOYMENT.md](../../DEPLOYMENT.md) for complete deployment instructions including API setup.
+
+## API Integration
+
+The app communicates with the FastAPI backend through:
+
+- `GET /puzzle/today` - Fetch daily puzzle metadata
+- `POST /guess` - Submit guesses and receive feedback
+
+All API requests are handled in `src/lib/api.ts` with proper error handling and TypeScript types.

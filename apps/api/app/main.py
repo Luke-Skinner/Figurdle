@@ -13,10 +13,22 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Figurdle API", version="1.0.0")
 
-# CORS: allow your Next.js dev server
+# CORS: allow development and production origins
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# Add production Vercel domain if configured
+if settings.ENVIRONMENT == "production":
+    # Add your Vercel domain here once deployed
+    # allowed_origins.extend(["https://your-app.vercel.app"])
+    # For now, allow all origins in production (update this with your actual domain)
+    allowed_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,6 +47,11 @@ def sign(payload: dict) -> str:
 @app.get("/healthz")
 def health():
     return {"ok": True}
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint for Cloud Run"""
+    return {"status": "healthy", "environment": settings.ENVIRONMENT}
 
 @app.post("/admin/rotate")
 def rotate():

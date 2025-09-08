@@ -21,10 +21,7 @@ allowed_origins = [
 
 # Add production Vercel domain if configured
 if settings.ENVIRONMENT == "production":
-    # Add your Vercel domain here once deployed
-    # allowed_origins.extend(["https://your-app.vercel.app"])
-    # For now, allow all origins in production (update this with your actual domain)
-    allowed_origins = ["*"]
+    allowed_origins.extend(["https://figurdle.vercel.app"])
 
 app.add_middleware(
     CORSMiddleware,

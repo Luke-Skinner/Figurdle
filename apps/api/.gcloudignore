@@ -23,6 +23,7 @@ README*
 
 # Deployment scripts
 redeploy.sh
+redeploy.ps1
 
 # IDE files
 .vscode/

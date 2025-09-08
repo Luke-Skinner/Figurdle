@@ -54,7 +54,9 @@ service-account-key.json
 
 # Deployment scripts with sensitive data
 **/redeploy.sh
+**\redeploy.ps1
 
 # IDE
 .DS_Store
 *.pem
+.vercel

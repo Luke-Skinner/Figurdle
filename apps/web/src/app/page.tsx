@@ -23,8 +23,8 @@ export default function Home() {
         setPuzzle(p);
         setHints([]); // reset hints on load
         setRevealedCount(0); // reset revealed count
-      } catch (e: any) {
-        setError(e.message || "Failed to load puzzle");
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : "Failed to load puzzle");
       } finally {
         setLoading(false);
       }
@@ -56,8 +56,8 @@ export default function Home() {
       // Optionally clear input on correct
       if (r.correct) setGuess("");
     }
-    catch (e: any) {
-      setError(e.message || "Guess failed");
+    catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Guess failed");
     }
     finally {
       setSubmitting(false);

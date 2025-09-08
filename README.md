@@ -77,8 +77,8 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Key Features
 
-- 🤖 **AI-Generated Characters**: Daily historical figures created with OpenAI GPT
-- 📝 **Progressive Hints**: Get hints one by one as you make incorrect guesses
-- 🔒 **Secure Validation**: HMAC signature verification for API integrity
-- 🌍 **Global Deployment**: Cloud-ready with Google Cloud Run + Vercel
-- 🎨 **Modern UI**: Clean, responsive interface built with Next.js + Tailwind
+- **AI-Generated Characters**: Daily historical figures created with OpenAI GPT
+- **Progressive Hints**: Get hints one by one as you make incorrect guesses
+- **Secure Validation**: HMAC signature verification for API integrity
+- **Global Deployment**: Cloud-ready with Google Cloud Run + Vercel
+- **Modern UI**: Clean, responsive interface built with Next.js + Tailwind

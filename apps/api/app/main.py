@@ -178,4 +178,4 @@ def post_guess(g: GuessIn, request: Request):
         if g.revealed < len(p.hints):
             return GuessOut(correct=False, reveal_next_hint=True, next_hint=p.hints[g.revealed], normalized_answer=None)
 
-        return GuessOut(correct=False, reveal_next_hint=False, next_hint=None, normalized_answer=None)
+        return GuessOut(correct=False, reveal_next_hint=False, next_hint=None, normalized_answer=p.answer)

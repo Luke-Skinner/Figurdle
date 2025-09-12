@@ -15,6 +15,7 @@ export default function Home() {
   const [hints, setHints] = useState<string[]>([]); // local revealed hints
   const [revealedCount, setRevealedCount] = useState(0); // track locally revealed hints
   const [isVictorious, setIsVictorious] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -25,6 +26,7 @@ export default function Home() {
         setHints([]); // reset hints on load
         setRevealedCount(0); // reset revealed count
         setIsVictorious(false); // reset victory state
+        setIsGameOver(false); // reset game over state
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Failed to load puzzle");
       } finally {
@@ -55,10 +57,14 @@ export default function Home() {
         setRevealedCount(prev => prev + 1);
       }
 
-      // Optionally clear input on correct
+      // Handle game ending conditions
       if (r.correct) {
         setGuess("");
         setIsVictorious(true);
+      } else if (!r.correct && !r.reveal_next_hint && r.normalized_answer) {
+        // Game over: hints exhausted, wrong guess, but answer revealed
+        setGuess("");
+        setIsGameOver(true);
       }
     }
     catch (e: unknown) {
@@ -93,23 +99,23 @@ export default function Home() {
         </div>
       )}
 
-      <form onSubmit={isVictorious ? (e) => e.preventDefault() : onSubmit} className="flex gap-3">
+      <form onSubmit={isVictorious || isGameOver ? (e) => e.preventDefault() : onSubmit} className="flex gap-3">
         <input
           className={`flex-1 rounded-xl border-2 px-4 py-3 text-lg text-black focus:outline-none transition-colors ${
-            isVictorious 
+            isVictorious || isGameOver
               ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed" 
               : "border-gray-300 focus:border-blue-500"
           }`}
-          placeholder={isVictorious ? "Puzzle completed!" : "Enter your guess…"}
+          placeholder={isVictorious ? "Puzzle completed!" : isGameOver ? "Game over!" : "Enter your guess…"}
           value={guess}
           onChange={(e) => setGuess(e.target.value)}
-          disabled={isVictorious}
+          disabled={isVictorious || isGameOver}
         />
         <button
           className="rounded-xl px-6 py-3 bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          disabled={submitting || !guess.trim() || !puzzle || isVictorious}
+          disabled={submitting || !guess.trim() || !puzzle || isVictorious || isGameOver}
         >
-          {submitting ? "Checking…" : isVictorious ? "Completed" : "Submit"}
+          {submitting ? "Checking…" : isVictorious ? "Completed" : isGameOver ? "Game Over" : "Submit"}
         </button>
       </form>
 
@@ -117,10 +123,12 @@ export default function Home() {
         <div className={`p-4 rounded-xl border-2 ${
           result.correct 
             ? "bg-green-50 border-green-200 text-green-800" 
+            : isGameOver
+            ? "bg-red-50 border-red-200 text-red-800"
             : "bg-orange-50 border-orange-200 text-orange-800"
         }`}>
           <div className="font-semibold text-lg">
-            {result.correct ? "Correct!" : "Try again"}
+            {result.correct ? "Correct!" : isGameOver ? "Game Over" : "Try again"}
           </div>
           {/* Show normalized answer when correct or when backend provides it */}
           {result.normalized_answer && (

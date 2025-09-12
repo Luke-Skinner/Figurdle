@@ -119,16 +119,14 @@ export default function Home() {
         </button>
       </form>
 
-      {result && !isVictorious && (
+      {result && !isVictorious && !isGameOver && (
         <div className={`p-4 rounded-xl border-2 ${
           result.correct 
             ? "bg-green-50 border-green-200 text-green-800" 
-            : isGameOver
-            ? "bg-red-50 border-red-200 text-red-800"
             : "bg-orange-50 border-orange-200 text-orange-800"
         }`}>
           <div className="font-semibold text-lg">
-            {result.correct ? "Correct!" : isGameOver ? "Game Over" : "Try again"}
+            {result.correct ? "Correct!" : "Try again"}
           </div>
           {/* Show normalized answer when correct or when backend provides it */}
           {result.normalized_answer && (
@@ -142,6 +140,18 @@ export default function Home() {
               <strong>New hint:</strong> {result.next_hint}
             </div>
           )}
+        </div>
+      )}
+
+      {isGameOver && result && (
+        <div className="p-4 rounded-xl border-2 bg-red-50 border-red-200 text-red-800">
+          <div className="font-semibold text-lg">Game Over</div>
+          <div className="mt-2 text-sm font-medium">
+            Answer: <span className="font-bold">{result.normalized_answer}</span>
+          </div>
+          <div className="mt-2 text-sm text-red-600">
+            All hints were revealed. Come back tomorrow for a new challenge!
+          </div>
         </div>
       )}
 

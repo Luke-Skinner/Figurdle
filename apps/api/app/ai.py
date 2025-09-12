@@ -93,45 +93,59 @@ def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, an
     Ask AI to evaluate if a character is too obscure for a daily puzzle game.
     Returns: {"is_too_obscure": bool, "reasoning": str, "familiarity_score": int}
     """
-    evaluation_prompt = f"""You are evaluating historical figures for a daily puzzle game like Wordle, where players need a reasonable chance of guessing correctly.
-
-Character to evaluate: {character_data['answer']}
-Aliases: {', '.join(character_data['aliases'])}
-
-Sample hints:
-1. {character_data['hints'][0]}
-2. {character_data['hints'][1]}
-3. {character_data['hints'][2]}
-
-Rate this character's suitability for a daily puzzle game:
-
-Criteria for "TOO OBSCURE":
-- Known only to academic specialists or history buffs
-- Regional/local figures with limited global recognition  
-- Requires very specific historical knowledge
-- Most educated adults wouldn't recognize the name
-
-Criteria for "APPROPRIATE":
-- Taught in high school or college history classes
-- Appears in documentaries, movies, or popular media
-- Referenced in general knowledge contexts
-- Most educated adults have heard the name
-
-Return your evaluation as JSON:
-{{
+    # Build evaluation prompt using string concatenation to avoid f-string issues
+    character_name = character_data['answer']
+    aliases = ', '.join(character_data['aliases'])
+    hint1 = character_data['hints'][0]
+    hint2 = character_data['hints'][1] 
+    hint3 = character_data['hints'][2]
+    
+    # JSON template for the response format
+    json_response_template = '''{
   "is_too_obscure": true/false,
   "familiarity_score": 1-10,
   "reasoning": "Brief explanation of familiarity level",
   "target_audience": "Who would typically know this person"
-}}
-
-Familiarity scale:
-1-3: Academic specialists only
-4-6: History enthusiasts and well-educated adults  
-7-8: General educated population
-9-10: Household names, widely known
-
-Be honest - err on the side of "too obscure" to maintain game accessibility."""
+}'''
+    
+    evaluation_prompt_parts = [
+        "You are evaluating historical figures for a daily puzzle game like Wordle, where players need a reasonable chance of guessing correctly.",
+        "",
+        "Character to evaluate: " + character_name,
+        "Aliases: " + aliases,
+        "",
+        "Sample hints:",
+        "1. " + hint1,
+        "2. " + hint2,
+        "3. " + hint3,
+        "",
+        "Rate this character's suitability for a daily puzzle game:",
+        "",
+        "Criteria for \"TOO OBSCURE\":",
+        "- Known only to academic specialists or history buffs",
+        "- Regional/local figures with limited global recognition",
+        "- Requires very specific historical knowledge",
+        "- Most educated adults wouldn't recognize the name",
+        "",
+        "Criteria for \"APPROPRIATE\":",
+        "- Taught in high school or college history classes",
+        "- Appears in documentaries, movies, or popular media",
+        "- Referenced in general knowledge contexts",
+        "- Most educated adults have heard the name",
+        "",
+        "Return your evaluation as JSON:",
+        json_response_template,
+        "",
+        "Familiarity scale:",
+        "1-3: Academic specialists only",
+        "4-6: History enthusiasts and well-educated adults",
+        "7-8: General educated population",
+        "9-10: Household names, widely known",
+        "",
+        "Be honest - err on the side of \"too obscure\" to maintain game accessibility."
+    ]
+    
+    evaluation_prompt = '\n'.join(evaluation_prompt_parts)
 
     try:
         openai_client = get_openai_client()
@@ -184,11 +198,11 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     # Build exclusion text for prompt
     exclusion_text = ""
     if avoid_characters and len(avoid_characters) > 0:
-        exclusion_text = f"""
-IMPORTANT - DO NOT choose any of these recent characters:
-{', '.join(avoid_characters[:50])}"""  # Limit to first 50 to avoid token limits
+        character_list = ', '.join(avoid_characters[:50])
+        exclusion_text = "\nIMPORTANT - DO NOT choose any of these recent characters:\n" + character_list
         if len(avoid_characters) > 50:
-            exclusion_text += f"\n(and {len(avoid_characters) - 50} more recent characters...)"
+            extra_count = len(avoid_characters) - 50
+            exclusion_text += "\n(and " + str(extra_count) + " more recent characters...)"
 
     # Adjust difficulty based on attempt number
     difficulty_guidance = ""
@@ -199,19 +213,8 @@ IMPORTANT - DO NOT choose any of these recent characters:
     else:
         difficulty_guidance = "Choose any historically significant figure, even if less commonly known."
     
-    # Craft a detailed prompt for consistent, high-quality character generation
-    system_prompt = f"""You are a game designer creating daily puzzles for "Figurdle" - a Wordle-like game where players guess historical figures based on progressive hints.
-
-{exclusion_text}
-
-Generate a historical figure that meets these criteria:
-- Historically significant (not just famous for being famous)
-- Has interesting, distinctive facts for hints
-- Can be from any time period or culture
-- {difficulty_guidance}
-
-Return your response as valid JSON with this exact structure:
-{
+    # Create the JSON template separately to avoid any f-string processing
+    json_template = '''{
   "answer": "Full Name",
   "aliases": ["Alternative Name 1", "Nickname", "Title"],
   "hints": [
@@ -224,28 +227,38 @@ Return your response as valid JSON with this exact structure:
     "Hint 7: Nearly gives it away but requires connecting the dots"
   ],
   "source_urls": ["https://en.wikipedia.org/wiki/Character_Name"]
-}
-
-CRITICAL RULES FOR HINTS:
-- NEVER mention the person's name, nickname, or any part of their name in any hint
-- NEVER mention titles that directly contain their name (e.g., don't say "Napoleonic Wars" for Napoleon)
-- Use pronouns (I, they, this person) instead of names
-- Refer to places, events, or concepts without using the person's name
-- Make hints progressively more specific but always avoid name reveals
-- Hint 7 should be very specific but still require the player to make the connection
-
-GOOD HINT EXAMPLES:
-- "I rose to power during a time of revolution" (not "Napoleon rose to power...")
-- "This military leader conquered much of Europe" (not "The Napoleonic conquests...")
-- "I was exiled to a remote island" (not "Napoleon was exiled...")
-
-BAD HINT EXAMPLES (NEVER DO THIS):
-- "I am known as Napoleon" 
-- "The Napoleonic era was named after me"
-- "My name appears in the term Napoleonic Wars"
-"""
-
-    user_prompt = """Generate a historical figure for today's puzzle. Choose someone interesting and well-known, but not too obvious. Make the hints engaging and educational."""
+}'''
+    
+    # Craft a detailed prompt for consistent, high-quality character generation
+    system_prompt_parts = [
+        'You are a game designer creating daily puzzles for "Figurdle" - a Wordle-like game where players guess historical figures based on progressive hints.',
+        exclusion_text,
+        "\nGenerate a historical figure that meets these criteria:",
+        "- Historically significant (not just famous for being famous)",
+        "- Has interesting, distinctive facts for hints",
+        "- Can be from any time period or culture",
+        "- " + difficulty_guidance,
+        "\nReturn your response as valid JSON with this exact structure:",
+        json_template,
+        "\nCRITICAL RULES FOR HINTS:",
+        "- NEVER mention the person's name, nickname, or any part of their name in any hint",
+        "- NEVER mention titles that directly contain their name (e.g., don't say 'Napoleonic Wars' for Napoleon)",
+        "- Use pronouns (I, they, this person) instead of names",
+        "- Refer to places, events, or concepts without using the person's name",
+        "- Make hints progressively more specific but always avoid name reveals",
+        "- Hint 7 should be very specific but still require the player to make the connection",
+        "\nGOOD HINT EXAMPLES:",
+        "- 'I rose to power during a time of revolution' (not 'Napoleon rose to power...')",
+        "- 'This military leader conquered much of Europe' (not 'The Napoleonic conquests...')",
+        "- 'I was exiled to a remote island' (not 'Napoleon was exiled...')",
+        "\nBAD HINT EXAMPLES (NEVER DO THIS):",
+        "- 'I am known as Napoleon'",
+        "- 'The Napoleonic era was named after me'",
+        "- 'My name appears in the term Napoleonic Wars'"
+    ]
+    
+    system_prompt = '\n'.join(system_prompt_parts)
+    user_prompt = "Generate a historical figure for today's puzzle. Choose someone interesting and well-known, but not too obvious. Make the hints engaging and educational."
 
     try:
         logger.info("Requesting character generation from OpenAI")

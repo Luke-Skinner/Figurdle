@@ -24,6 +24,27 @@ def get_openai_client():
             raise CharacterGenerationError(f"Failed to initialize OpenAI client: {e}")
     return client
 
+def get_recent_characters(days_back: int = 90) -> List[str]:
+    """Get all character names from the last N days to avoid duplicates."""
+    from .db import SessionLocal
+    from .models import Puzzle
+    from datetime import datetime, timedelta
+    import pytz
+    
+    cutoff_date = (datetime.now(pytz.timezone("America/Los_Angeles")) - timedelta(days=days_back)).date()
+    
+    with SessionLocal() as db:
+        recent_puzzles = db.query(Puzzle).filter(Puzzle.puzzle_date >= cutoff_date).all()
+        
+        characters = []
+        for puzzle in recent_puzzles:
+            # Add main answer
+            characters.append(puzzle.answer.lower())
+            # Add all aliases
+            characters.extend([alias.lower() for alias in puzzle.aliases])
+        
+        return list(set(characters))  # Remove duplicates
+
 def validate_hints_dont_reveal_answer(character_data: Dict[str, any]) -> bool:
     """
     Validate that hints don't accidentally reveal the answer or any aliases.
@@ -67,7 +88,87 @@ def validate_hints_dont_reveal_answer(character_data: Dict[str, any]) -> bool:
     
     return True
 
-def generate_daily_character() -> Dict[str, any]:
+def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, any]:
+    """
+    Ask AI to evaluate if a character is too obscure for a daily puzzle game.
+    Returns: {"is_too_obscure": bool, "reasoning": str, "familiarity_score": int}
+    """
+    evaluation_prompt = f"""You are evaluating historical figures for a daily puzzle game like Wordle, where players need a reasonable chance of guessing correctly.
+
+Character to evaluate: {character_data['answer']}
+Aliases: {', '.join(character_data['aliases'])}
+
+Sample hints:
+1. {character_data['hints'][0]}
+2. {character_data['hints'][1]}
+3. {character_data['hints'][2]}
+
+Rate this character's suitability for a daily puzzle game:
+
+Criteria for "TOO OBSCURE":
+- Known only to academic specialists or history buffs
+- Regional/local figures with limited global recognition  
+- Requires very specific historical knowledge
+- Most educated adults wouldn't recognize the name
+
+Criteria for "APPROPRIATE":
+- Taught in high school or college history classes
+- Appears in documentaries, movies, or popular media
+- Referenced in general knowledge contexts
+- Most educated adults have heard the name
+
+Return your evaluation as JSON:
+{{
+  "is_too_obscure": true/false,
+  "familiarity_score": 1-10,
+  "reasoning": "Brief explanation of familiarity level",
+  "target_audience": "Who would typically know this person"
+}}
+
+Familiarity scale:
+1-3: Academic specialists only
+4-6: History enthusiasts and well-educated adults  
+7-8: General educated population
+9-10: Household names, widely known
+
+Be honest - err on the side of "too obscure" to maintain game accessibility."""
+
+    try:
+        openai_client = get_openai_client()
+        
+        response = openai_client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[{"role": "user", "content": evaluation_prompt}],
+            temperature=0.3,  # Low temperature for consistent evaluation
+            max_tokens=300
+        )
+        
+        content = response.choices[0].message.content
+        evaluation = json.loads(content)
+        
+        # Validate response structure
+        required_fields = ["is_too_obscure", "familiarity_score", "reasoning"]
+        for field in required_fields:
+            if field not in evaluation:
+                raise ValueError(f"Missing field in evaluation: {field}")
+                
+        logger.info(f"Obscurity evaluation for {character_data['answer']}: "
+                   f"Score {evaluation['familiarity_score']}/10, "
+                   f"Too obscure: {evaluation['is_too_obscure']}")
+        
+        return evaluation
+        
+    except Exception as e:
+        logger.error(f"Obscurity evaluation failed: {e}")
+        # Default to "not too obscure" to avoid blocking generation
+        return {
+            "is_too_obscure": False,
+            "familiarity_score": 7,
+            "reasoning": "Evaluation failed, defaulting to acceptable",
+            "target_audience": "Unknown due to evaluation error"
+        }
+
+def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 1) -> Dict[str, any]:
     """
     Generate a new historical figure character for today's puzzle using OpenAI.
     
@@ -80,14 +181,34 @@ def generate_daily_character() -> Dict[str, any]:
     Raises CharacterGenerationError if generation fails.
     """
     
+    # Build exclusion text for prompt
+    exclusion_text = ""
+    if avoid_characters and len(avoid_characters) > 0:
+        exclusion_text = f"""
+IMPORTANT - DO NOT choose any of these recent characters:
+{', '.join(avoid_characters[:50])}"""  # Limit to first 50 to avoid token limits
+        if len(avoid_characters) > 50:
+            exclusion_text += f"\n(and {len(avoid_characters) - 50} more recent characters...)"
+
+    # Adjust difficulty based on attempt number
+    difficulty_guidance = ""
+    if attempt == 1:
+        difficulty_guidance = "Choose well-known historical figures that educated players would recognize."
+    elif attempt == 2:
+        difficulty_guidance = "You may choose slightly more obscure but still notable historical figures."
+    else:
+        difficulty_guidance = "Choose any historically significant figure, even if less commonly known."
+    
     # Craft a detailed prompt for consistent, high-quality character generation
-    system_prompt = """You are a game designer creating daily puzzles for "Figurdle" - a Wordle-like game where players guess historical figures based on progressive hints.
+    system_prompt = f"""You are a game designer creating daily puzzles for "Figurdle" - a Wordle-like game where players guess historical figures based on progressive hints.
+
+{exclusion_text}
 
 Generate a historical figure that meets these criteria:
-- Well-known enough that players have a reasonable chance of guessing
 - Historically significant (not just famous for being famous)
 - Has interesting, distinctive facts for hints
 - Can be from any time period or culture
+- {difficulty_guidance}
 
 Return your response as valid JSON with this exact structure:
 {
@@ -187,6 +308,76 @@ BAD HINT EXAMPLES (NEVER DO THIS):
             raise
         logger.error(f"OpenAI API error: {e}")
         raise CharacterGenerationError(f"Failed to generate character: {e}")
+
+def is_duplicate(character_data: Dict[str, any], avoid_list: List[str]) -> bool:
+    """Check if generated character is in the avoid list."""
+    answer_lower = character_data["answer"].lower()
+    aliases_lower = [alias.lower() for alias in character_data["aliases"]]
+    
+    all_names = [answer_lower] + aliases_lower
+    
+    for name in all_names:
+        if name in avoid_list:
+            return True
+    return False
+
+def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
+    """Generate character with AI-driven obscurity evaluation."""
+    from .config import settings
+    
+    # Phase 1: Try with strict duplicate prevention
+    recent_characters = get_recent_characters(settings.DUPLICATE_PREVENTION_DAYS)
+    logger.info(f"Phase 1: Avoiding {len(recent_characters)} characters from last {settings.DUPLICATE_PREVENTION_DAYS} days")
+    
+    for attempt in range(3):  # Try a few times with strict rules
+        try:
+            character_data = generate_daily_character(recent_characters, attempt + 1)
+            
+            # AI evaluation
+            evaluation = evaluate_character_obscurity(character_data)
+            
+            if not evaluation["is_too_obscure"]:
+                logger.info(f"✅ Character approved: {character_data['answer']} "
+                           f"(Score: {evaluation['familiarity_score']}/10)")
+                return character_data
+            else:
+                logger.info(f"❌ Character too obscure: {character_data['answer']} "
+                           f"(Score: {evaluation['familiarity_score']}/10) - {evaluation['reasoning']}")
+                
+        except Exception as e:
+            logger.warning(f"Phase 1 attempt {attempt + 1} failed: {e}")
+    
+    # Phase 2: Allow older duplicates (30+ days)
+    fallback_characters = get_recent_characters(settings.FALLBACK_DUPLICATE_DAYS)
+    logger.info(f"Phase 2: AI deemed strict options too obscure. "
+               f"Allowing duplicates older than {settings.FALLBACK_DUPLICATE_DAYS} days")
+    
+    for attempt in range(3):
+        try:
+            character_data = generate_daily_character(fallback_characters, attempt + 4)
+            
+            evaluation = evaluate_character_obscurity(character_data)
+            
+            if not evaluation["is_too_obscure"]:
+                logger.info(f"✅ Fallback character approved: {character_data['answer']} "
+                           f"(Score: {evaluation['familiarity_score']}/10)")
+                return character_data
+            else:
+                logger.info(f"❌ Fallback character still too obscure: {character_data['answer']} "
+                           f"(Score: {evaluation['familiarity_score']}/10)")
+                
+        except Exception as e:
+            logger.warning(f"Phase 2 attempt {attempt + 1} failed: {e}")
+    
+    # Phase 3: Last resort - accept any character that generates successfully
+    logger.warning("Phase 3: Accepting any character to ensure service availability")
+    character_data = generate_daily_character([], 99)  # No restrictions
+    
+    evaluation = evaluate_character_obscurity(character_data)
+    logger.info(f"⚠️ Last resort character: {character_data['answer']} "
+               f"(Score: {evaluation['familiarity_score']}/10) - {evaluation['reasoning']}")
+    
+    return character_data
 
 
 def test_generation() -> Dict[str, any]:

@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PORT: int = 8080
     
+    # AI-driven duplicate prevention settings
+    DUPLICATE_PREVENTION_DAYS: int = 90  # Avoid duplicates from last N days
+    FALLBACK_DUPLICATE_DAYS: int = 30    # In fallback, only avoid last N days  
+    OBSCURITY_THRESHOLD: int = 6         # Minimum familiarity score (1-10)
+    
     class Config:
         env_file = ".env"
     
@@ -25,7 +30,10 @@ class Settings(BaseSettings):
         """Get database URL based on environment"""
         if self.ENVIRONMENT == "production" and self.INSTANCE_CONNECTION_NAME:
             # Cloud SQL connection for production
-            return f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASS}@/{self.DB_NAME}?host=/cloudsql/{self.INSTANCE_CONNECTION_NAME}"
+            db_url = f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASS}@/{self.DB_NAME}?host=/cloudsql/{self.INSTANCE_CONNECTION_NAME}"
+            print(f"Using database URL: {db_url}")
+            return db_url
+        print(f"Using database URL: {self.DATABASE_URL}")
         return self.DATABASE_URL
 
 settings = Settings()

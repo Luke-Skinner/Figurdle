@@ -46,9 +46,9 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    # Use environment variable if available
-    if "DATABASE_URL" in os.environ:
-        url = os.environ["DATABASE_URL"]
+    # Use app's database configuration
+    from app.config import settings
+    url = settings.get_database_url()
     
     context.configure(
         url=url,
@@ -70,9 +70,9 @@ def run_migrations_online() -> None:
     """
     configuration = config.get_section(config.config_ini_section, {})
     
-    # Use environment variable if available
-    if "DATABASE_URL" in os.environ:
-        configuration["sqlalchemy.url"] = os.environ["DATABASE_URL"]
+    # Use app's database configuration  
+    from app.config import settings
+    configuration["sqlalchemy.url"] = settings.get_database_url()
     
     connectable = engine_from_config(
         configuration,

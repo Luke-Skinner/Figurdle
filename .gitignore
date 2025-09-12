@@ -60,3 +60,6 @@ service-account-key.json
 .DS_Store
 *.pem
 .vercel
+
+# Claude Code documentation
+CLAUDE.md

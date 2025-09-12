@@ -4,7 +4,7 @@ from .db import Base, engine, SessionLocal
 from .models import Puzzle
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
-from .ai import generate_daily_character, CharacterGenerationError
+from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError
 from datetime import datetime, date
 import pytz, hmac, hashlib, json
 import logging
@@ -21,7 +21,13 @@ allowed_origins = [
 
 # Add production Vercel domain if configured
 if settings.ENVIRONMENT == "production":
-    allowed_origins.extend(["https://figurdle.vercel.app"])
+    allowed_origins.extend([
+        "https://figurdle.vercel.app",
+        "https://figurdle-web.vercel.app", 
+        "https://figurdle-git-main.vercel.app"
+    ])
+    # Temporary: allow all origins to debug CORS
+    allowed_origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,6 +56,25 @@ def health_check():
     """Health check endpoint for Cloud Run"""
     return {"status": "healthy", "environment": settings.ENVIRONMENT}
 
+@app.get("/admin/status")
+def generation_status():
+    """Check if today's puzzle exists and when it was created."""
+    with SessionLocal() as db:
+        p = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).one_or_none()
+        if not p:
+            return {
+                "puzzle_date": str(today_pst()),
+                "exists": False,
+                "will_auto_generate": True
+            }
+        return {
+            "puzzle_date": str(p.puzzle_date),
+            "exists": True,
+            "character": p.answer,
+            "created_at": str(p.created_at),
+            "hints_count": len(p.hints)
+        }
+
 @app.post("/admin/rotate")
 def rotate():
     """Generate today's puzzle using AI character generation."""
@@ -63,7 +88,7 @@ def rotate():
         try:
             # Generate new character using AI
             logger.info("Generating new character using AI...")
-            character_data = generate_daily_character()
+            character_data = generate_daily_character_with_ai_evaluation()
             
             # Create puzzle from AI-generated data
             new_puzzle = Puzzle(
@@ -104,7 +129,30 @@ def get_puzzle_today():
     with SessionLocal() as db:
         p = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).one_or_none()
         if not p:
-            raise HTTPException(503, "Puzzle not ready")
+            try:
+                logger.info(f"No puzzle found for {today_pst()}, generating automatically...")
+                character_data = generate_daily_character_with_ai_evaluation()
+
+                p = Puzzle(
+                    puzzle_date=today_pst(),
+                    answer=character_data["answer"],
+                    aliases=character_data["aliases"],
+                    hints=character_data["hints"],
+                    source_urls=character_data["source_urls"]
+                )
+
+                db.add(p)
+                db.commit()
+                logger.info(f"Auto-generated puzzle: {character_data['answer']}")
+
+            except CharacterGenerationError as e:
+                logger.error(f"Auto-generation failed: {e}")
+                raise HTTPException(503, f"Puzzle generation failed: {str(e)}")
+            except Exception as e:
+                logger.error(f"Unexpected error during auto-generation: {e}")
+                db.rollback()
+                raise HTTPException(503, "Puzzle service temporarily unavailable")
+            
         payload = {"puzzle_date": str(p.puzzle_date), "hints_count": len(p.hints)}
         return {**payload, "signature": sign(payload)}
 

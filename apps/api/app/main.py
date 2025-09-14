@@ -1,12 +1,12 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Cookie, Response
 from fastapi.middleware.cors import CORSMiddleware
 from .db import Base, engine, SessionLocal
-from .models import Puzzle
+from .models import Puzzle, UserSession
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
 from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError
 from datetime import datetime, date
-import pytz, hmac, hashlib, json
+import pytz, hmac, hashlib, json, secrets
 import logging
 import traceback
 
@@ -196,3 +196,117 @@ def post_guess(g: GuessIn, request: Request):
 
         logger.info(f"All hints exhausted ({g.revealed} >= {len(p.hints)}) - returning game over response")
         return GuessOut(correct=False, reveal_next_hint=False, next_hint=None, normalized_answer=p.answer)
+
+@app.get("/session/status")
+def get_session_status(response: Response, figurdle_session: str = Cookie(None)):
+    """Check session status and create session if needed"""
+
+    # Create session if doesn't exist
+    if not figurdle_session:
+        figurdle_session = secrets.token_urlsafe(32)
+        response.set_cookie(
+            "figurdle_session",
+            figurdle_session,
+            max_age=86400 * 30,  # 30 days
+            httponly=True,
+            secure=settings.ENVIRONMENT == "production",
+            samesite="lax"
+        )
+        logger.info(f"Created new session: {figurdle_session[:8]}...")
+
+    # Check if user has played today
+    with SessionLocal() as db:
+        session_record = db.query(UserSession).filter(
+            UserSession.session_id == figurdle_session,
+            UserSession.puzzle_date == today_pst()
+        ).first()
+
+        return {
+            "session_id": figurdle_session[:8] + "...",  # Truncated for privacy
+            "can_play": not session_record or not session_record.completed,
+            "has_played": bool(session_record),
+            "result": session_record.result if session_record else None,
+            "attempts": session_record.attempts_count if session_record else 0,
+            "hints_revealed": session_record.hints_revealed if session_record else 0,
+            "completed_at": str(session_record.completed_at) if session_record and session_record.completed_at else None
+        }
+
+@app.post("/session/complete")
+def complete_session(
+    result: str,  # 'won' or 'lost'
+    attempts: int,
+    hints_revealed: int,
+    figurdle_session: str = Cookie(None)
+):
+    """Record game completion"""
+    if not figurdle_session:
+        raise HTTPException(400, "No session found")
+
+    if result not in ['won', 'lost']:
+        raise HTTPException(400, "Result must be 'won' or 'lost'")
+
+    with SessionLocal() as db:
+        session_record = db.query(UserSession).filter(
+            UserSession.session_id == figurdle_session,
+            UserSession.puzzle_date == today_pst()
+        ).first()
+
+        if not session_record:
+            session_record = UserSession(
+                session_id=figurdle_session,
+                puzzle_date=today_pst(),
+                completed=True,
+                result=result,
+                attempts_count=attempts,
+                hints_revealed=hints_revealed,
+                completed_at=datetime.now(pytz.timezone("America/Los_Angeles"))
+            )
+            db.add(session_record)
+            logger.info(f"Created new session record for {figurdle_session[:8]}...: {result}")
+        else:
+            if session_record.completed:
+                logger.warning(f"Session {figurdle_session[:8]}... already completed today")
+                return {"success": False, "message": "Game already completed today"}
+
+            session_record.completed = True
+            session_record.result = result
+            session_record.attempts_count = attempts
+            session_record.hints_revealed = hints_revealed
+            session_record.completed_at = datetime.now(pytz.timezone("America/Los_Angeles"))
+            logger.info(f"Updated session record for {figurdle_session[:8]}...: {result}")
+
+        db.commit()
+        return {"success": True, "result": result}
+
+@app.post("/session/update-progress")
+def update_session_progress(
+    attempts: int,
+    hints_revealed: int,
+    figurdle_session: str = Cookie(None)
+):
+    """Update session progress during gameplay"""
+    if not figurdle_session:
+        raise HTTPException(400, "No session found")
+
+    with SessionLocal() as db:
+        session_record = db.query(UserSession).filter(
+            UserSession.session_id == figurdle_session,
+            UserSession.puzzle_date == today_pst()
+        ).first()
+
+        if not session_record:
+            session_record = UserSession(
+                session_id=figurdle_session,
+                puzzle_date=today_pst(),
+                completed=False,
+                attempts_count=attempts,
+                hints_revealed=hints_revealed
+            )
+            db.add(session_record)
+        else:
+            if not session_record.completed:
+                session_record.attempts_count = attempts
+                session_record.hints_revealed = hints_revealed
+
+        db.commit()
+        return {"success": True}

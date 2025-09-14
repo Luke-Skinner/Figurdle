@@ -1,6 +1,6 @@
 # Figurdle
 
-A daily art guessing game inspired by Wordle.
+A daily historical character guessing game inspired by Wordle.
 
 ## Quick Start
 
@@ -66,10 +66,11 @@ Figurdle/
 - **Backend**: FastAPI app on http://localhost:8080
 - **Database**: SQLite (development)
 
-### Production (Recommended)
-- **Frontend**: Vercel (https://your-app.vercel.app)
-- **Backend**: Google Cloud Run
+### Production
+- **Frontend**: Vercel (https://figurdle.vercel.app)
+- **Backend**: Google Cloud Run (https://figurdle-api-577822725712.us-central1.run.app)
 - **Database**: Google Cloud SQL (PostgreSQL)
+- **Scheduling**: Google Cloud Scheduler (daily puzzle generation at 12:01 AM PST)
 
 ## Deployment
 
@@ -77,8 +78,9 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Key Features
 
-- **AI-Generated Characters**: Daily historical figures created with OpenAI GPT
+- **AI-Generated Characters**: Daily historical figures created with OpenAI GPT-4o-mini
+- **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hints**: Get hints one by one as you make incorrect guesses
 - **Secure Validation**: HMAC signature verification for API integrity
-- **Global Deployment**: Cloud-ready with Google Cloud Run + Vercel
-- **Modern UI**: Clean, responsive interface built with Next.js + Tailwind
+- **CI/CD Pipeline**: Automated deployment via Google Cloud Run with repository integration
+- **Modern UI**: Clean, responsive interface built with Next.js 15 + Tailwind CSS

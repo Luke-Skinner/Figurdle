@@ -27,9 +27,51 @@ export type GuessIn = {
 };
 export type GuessOut = { correct: boolean; reveal_next_hint: boolean; next_hint: string | null; normalized_answer: string | null; };
 
+export type SessionStatus = {
+  session_id: string;
+  can_play: boolean;
+  has_played: boolean;
+  result: string | null;
+  attempts: number;
+  hints_revealed: number;
+  completed_at: string | null;
+};
+
+export type CompleteSessionRequest = {
+  result: 'won' | 'lost';
+  attempts: number;
+  hints_revealed: number;
+};
+
+export type UpdateProgressRequest = {
+  attempts: number;
+  hints_revealed: number;
+};
+
 export const getTodayPuzzle = () => http<PublicPuzzle>("/puzzle/today");
 export const submitGuess = (body: GuessIn) =>
-  http<GuessOut>(`/guess?date=${encodeURIComponent(body.puzzle_date)}&hc=${body.hints_count}`, { 
-    method: "POST", 
-    body: JSON.stringify(body) 
+  http<GuessOut>(`/guess?date=${encodeURIComponent(body.puzzle_date)}&hc=${body.hints_count}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    credentials: "include"  // Important: sends cookies
+  });
+
+// Session management endpoints
+export const getSessionStatus = () =>
+  http<SessionStatus>("/session/status", {
+    credentials: "include"
+  });
+
+export const completeSession = (body: CompleteSessionRequest) =>
+  http<{success: boolean; result?: string; message?: string}>("/session/complete", {
+    method: "POST",
+    body: JSON.stringify(body),
+    credentials: "include"
+  });
+
+export const updateProgress = (body: UpdateProgressRequest) =>
+  http<{success: boolean}>("/session/update-progress", {
+    method: "POST",
+    body: JSON.stringify(body),
+    credentials: "include"
   });

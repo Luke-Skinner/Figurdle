@@ -4,11 +4,12 @@ FastAPI backend for the daily historical character guessing game.
 
 ## Features
 
-- **AI Character Generation**: Uses OpenAI GPT to generate daily historical characters with hints
+- **AI Character Generation**: Uses OpenAI GPT-4o-mini to generate daily historical characters with hints
+- **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hint System**: Reveals hints one by one as players make incorrect guesses
 - **Secure Validation**: HMAC signature verification for API requests
 - **Database Integration**: PostgreSQL with SQLAlchemy and Alembic migrations
-- **Cloud-Ready**: Configured for Google Cloud Run deployment
+- **Cloud-Ready**: Configured for Google Cloud Run with CI/CD pipeline support
 
 ## Tech Stack
 
@@ -64,7 +65,11 @@ FastAPI backend for the daily historical character guessing game.
 - `GET /health` - Health check
 - `GET /puzzle/today` - Get today's puzzle metadata
 - `POST /guess` - Submit a guess and get result
-- `POST /admin/rotate` - Generate new daily puzzle (admin)
+
+### Admin Endpoints
+
+- `GET /admin/status` - Check if today's puzzle exists and view creation details
+- `POST /admin/rotate` - Generate new daily puzzle (manual trigger)
 
 ### Response Examples
 
@@ -84,6 +89,17 @@ FastAPI backend for the daily historical character guessing game.
   "reveal_next_hint": true,
   "next_hint": "This person lived in the 16th century",
   "normalized_answer": null
+}
+```
+
+**Check Puzzle Status:**
+```json
+{
+  "puzzle_date": "2025-09-14",
+  "exists": true,
+  "character": "Leonardo da Vinci",
+  "created_at": "2025-09-14T08:09:00Z",
+  "hints_count": 7
 }
 ```
 

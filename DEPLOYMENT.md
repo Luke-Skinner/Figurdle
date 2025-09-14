@@ -1,6 +1,6 @@
 # Deployment Guide: Google Cloud + Vercel
 
-This guide covers deploying Figurdle with the API on Google Cloud Run and the frontend on Vercel.
+This guide covers deploying Figurdle with the API on Google Cloud Run and the frontend on Vercel. The project includes automated deployment pipelines and daily puzzle generation.
 
 ## Prerequisites
 
@@ -33,6 +33,28 @@ This guide covers deploying Figurdle with the API on Google Cloud Run and the fr
    ```
 
 ### Deploy API to Cloud Run
+
+#### Option A: Automated Pipeline (Recommended)
+
+Google Cloud Run supports automated deployments directly from your Git repository. This enables continuous deployment when you push changes to main.
+
+1. **Set up automated deployment:**
+   - Connect your repository to Cloud Run
+   - Configure build triggers for the `apps/api` directory
+   - Set environment variables in the Cloud Run service configuration
+
+2. **Configure environment variables in Cloud Run console:**
+   ```bash
+   ENVIRONMENT=production
+   INSTANCE_CONNECTION_NAME=[PROJECT_ID]:[REGION]:figurdle-db
+   DB_USER=figurdle-user
+   DB_PASS=[YOUR_PASSWORD]
+   DB_NAME=figurdle
+   OPENAI_API_KEY=[YOUR_OPENAI_KEY]
+   PUZZLE_SIGNING_SECRET=[SECURE_RANDOM_STRING]
+   ```
+
+#### Option B: Manual Deployment
 
 1. **Navigate to API directory:**
    ```bash
@@ -124,7 +146,48 @@ PORT=8080
 NEXT_PUBLIC_API_URL=[YOUR_CLOUD_RUN_URL]
 ```
 
-## 4. Post-Deployment Tasks
+## 4. Set Up Automated Daily Puzzle Generation
+
+### Configure Google Cloud Scheduler
+
+1. **Enable Cloud Scheduler API:**
+   ```bash
+   gcloud services enable cloudscheduler.googleapis.com
+   ```
+
+2. **Create daily puzzle generation job:**
+   ```bash
+   gcloud scheduler jobs create http daily-puzzle-generation \
+     --location=us-central1 \
+     --schedule="1 0 * * *" \
+     --time-zone="America/Los_Angeles" \
+     --uri="[YOUR_CLOUD_RUN_URL]/admin/rotate" \
+     --http-method=POST \
+     --headers="Content-Type=application/json,Content-Length=0" \
+     --max-retry-attempts=3 \
+     --max-retry-duration=300s
+   ```
+
+3. **Test the scheduler job:**
+   ```bash
+   gcloud scheduler jobs run daily-puzzle-generation --location=us-central1
+   ```
+
+### Monitor Scheduled Jobs
+
+```bash
+# View job status
+gcloud scheduler jobs describe daily-puzzle-generation --location=us-central1
+
+# View execution logs
+gcloud logging read "resource.type=cloud_scheduler_job AND resource.labels.job_id=daily-puzzle-generation" --limit=5
+
+# Pause/resume job
+gcloud scheduler jobs pause daily-puzzle-generation --location=us-central1
+gcloud scheduler jobs resume daily-puzzle-generation --location=us-central1
+```
+
+## 5. Post-Deployment Tasks
 
 1. **Test the API:**
    ```bash
@@ -133,18 +196,23 @@ NEXT_PUBLIC_API_URL=[YOUR_CLOUD_RUN_URL]
 
 2. **Generate first puzzle:**
    ```bash
-   curl -X POST [YOUR_CLOUD_RUN_URL]/admin/rotate
+   curl -X POST -H "Content-Length: 0" [YOUR_CLOUD_RUN_URL]/admin/rotate
    ```
 
-3. **Update CORS:**
+3. **Verify automated scheduling:**
+   ```bash
+   gcloud scheduler jobs list --location=us-central1
+   ```
+
+4. **Update CORS:**
    - Add your Vercel domain to allowed origins
    - Redeploy API
 
-4. **Set up custom domain (optional):**
+5. **Set up custom domain (optional):**
    - Configure custom domain in Vercel dashboard
    - Update API CORS with custom domain
 
-## 5. Monitoring & Maintenance
+## 6. Monitoring & Maintenance
 
 ### View Logs
 ```bash
@@ -153,6 +221,9 @@ gcloud run services logs read figurdle-api --region us-central1
 
 # Database logs
 gcloud sql operations list --instance figurdle-db
+
+# Scheduler logs
+gcloud logging read "resource.type=cloud_scheduler_job AND resource.labels.job_id=daily-puzzle-generation" --limit=10
 ```
 
 ### Scaling

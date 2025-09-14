@@ -72,14 +72,9 @@ export default function Home() {
         console.log("Victory detected");
         setGuess("");
         setIsVictorious(true);
-      } else if (!r.correct && !r.reveal_next_hint && r.normalized_answer) {
-        // Game over: hints exhausted, wrong guess, but answer revealed
-        console.log("Game over detected - hints exhausted");
-        setGuess("");
-        setIsGameOver(true);
       } else if (!r.correct && !r.reveal_next_hint) {
-        // Alternative game over condition - no more hints and wrong guess
-        console.log("Alternative game over check - no reveal and wrong guess");
+        // Game over: hints exhausted, wrong guess
+        console.log("Game over detected - hints exhausted, answer:", r.normalized_answer);
         setGuess("");
         setIsGameOver(true);
       } else {
@@ -162,12 +157,14 @@ export default function Home() {
         </div>
       )}
 
-      {isGameOver && result && (
+      {isGameOver && (
         <div className="p-4 rounded-xl border-2 bg-red-50 border-red-200 text-red-800">
           <div className="font-semibold text-lg">Game Over</div>
-          <div className="mt-2 text-sm font-medium">
-            Answer: <span className="font-bold">{result.normalized_answer}</span>
-          </div>
+          {result?.normalized_answer && (
+            <div className="mt-2 text-sm font-medium">
+              Answer: <span className="font-bold">{result.normalized_answer}</span>
+            </div>
+          )}
           <div className="mt-2 text-sm text-red-600">
             All hints were revealed. Come back tomorrow for a new challenge!
           </div>

@@ -8,6 +8,7 @@ from .ai import generate_daily_character_with_ai_evaluation, CharacterGeneration
 from datetime import datetime, date
 import pytz, hmac, hashlib, json
 import logging
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +148,11 @@ def get_puzzle_today():
 
             except CharacterGenerationError as e:
                 logger.error(f"Auto-generation failed: {e}")
+                logger.error(f"Full traceback: {traceback.format_exc()}")
                 raise HTTPException(503, f"Puzzle generation failed: {str(e)}")
             except Exception as e:
                 logger.error(f"Unexpected error during auto-generation: {e}")
+                logger.error(f"Full traceback: {traceback.format_exc()}")
                 db.rollback()
                 raise HTTPException(503, "Puzzle service temporarily unavailable")
             
@@ -172,10 +175,18 @@ def post_guess(g: GuessIn, request: Request):
         norm = g.guess.strip().lower()
         answers = [p.answer.lower()] + [a.lower() for a in p.aliases]
 
+        logger.info(f"Processing guess: '{g.guess}' (normalized: '{norm}')")
+        logger.info(f"Answer: '{p.answer}', Aliases: {p.aliases}")
+        logger.info(f"Revealed count from frontend: {g.revealed}, Total hints available: {len(p.hints)}")
+
         if norm in answers:
+            logger.info("Guess is correct - returning victory response")
             return GuessOut(correct=True, reveal_next_hint=False, next_hint=None, normalized_answer=p.answer)
 
         if g.revealed < len(p.hints):
-            return GuessOut(correct=False, reveal_next_hint=True, next_hint=p.hints[g.revealed], normalized_answer=None)
+            next_hint = p.hints[g.revealed]
+            logger.info(f"Wrong guess, revealing hint {g.revealed + 1}/{len(p.hints)}: '{next_hint}'")
+            return GuessOut(correct=False, reveal_next_hint=True, next_hint=next_hint, normalized_answer=None)
 
+        logger.info(f"All hints exhausted ({g.revealed} >= {len(p.hints)}) - returning game over response")
         return GuessOut(correct=False, reveal_next_hint=False, next_hint=None, normalized_answer=p.answer)

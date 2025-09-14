@@ -51,20 +51,39 @@ export default function Home() {
       });
       setResult(r);
 
+      // Debug logging
+      console.log("Backend response:", {
+        correct: r.correct,
+        reveal_next_hint: r.reveal_next_hint,
+        next_hint: r.next_hint,
+        normalized_answer: r.normalized_answer,
+        current_revealed_count: revealedCount
+      });
+
       // If backend tells us to reveal a hint, append it and bump local count
       if (r.reveal_next_hint && r.next_hint) {
         setHints((prev) => [...prev, r.next_hint!]);
         setRevealedCount(prev => prev + 1);
+        console.log("Revealing hint, new count will be:", revealedCount + 1);
       }
 
       // Handle game ending conditions
       if (r.correct) {
+        console.log("Victory detected");
         setGuess("");
         setIsVictorious(true);
       } else if (!r.correct && !r.reveal_next_hint && r.normalized_answer) {
         // Game over: hints exhausted, wrong guess, but answer revealed
+        console.log("Game over detected - hints exhausted");
         setGuess("");
         setIsGameOver(true);
+      } else if (!r.correct && !r.reveal_next_hint) {
+        // Alternative game over condition - no more hints and wrong guess
+        console.log("Alternative game over check - no reveal and wrong guess");
+        setGuess("");
+        setIsGameOver(true);
+      } else {
+        console.log("Continue playing - more hints available");
       }
     }
     catch (e: unknown) {

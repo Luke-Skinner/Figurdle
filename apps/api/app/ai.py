@@ -3,6 +3,8 @@ from .config import settings
 import json
 from typing import Dict, List, Optional
 import logging
+import time
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,23 @@ client = None
 
 class CharacterGenerationError(Exception):
     pass
+
+def call_openai_with_retry(openai_client, **kwargs):
+    """Call OpenAI API with exponential backoff retry logic."""
+    max_retries = 3
+    base_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            return openai_client.chat.completions.create(**kwargs)
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise e
+            
+            # Exponential backoff with jitter
+            delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
+            logger.warning(f"OpenAI API call failed (attempt {attempt + 1}), retrying in {delay:.2f}s: {e}")
+            time.sleep(delay)
 
 def get_openai_client():
     """Get OpenAI client, creating it if needed."""
@@ -150,7 +169,8 @@ def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, an
     try:
         openai_client = get_openai_client()
         
-        response = openai_client.chat.completions.create(
+        response = call_openai_with_retry(
+            openai_client,
             model=settings.OPENAI_MODEL,
             messages=[{"role": "user", "content": evaluation_prompt}],
             temperature=0.3,  # Low temperature for consistent evaluation
@@ -158,6 +178,28 @@ def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, an
         )
         
         content = response.choices[0].message.content
+        
+        # Add better error handling for JSON parsing
+        if not content or content.strip() == "":
+            logger.warning("Empty response from OpenAI for obscurity evaluation")
+            raise ValueError("Empty response from OpenAI")
+            
+        # Try to extract JSON if response contains extra text
+        content = content.strip()
+        
+        # Look for JSON block if wrapped in markdown code blocks
+        if '```json' in content:
+            start = content.find('```json') + 7
+            end = content.find('```', start)
+            if end > start:
+                content = content[start:end].strip()
+        elif '{' in content and '}' in content:
+            # Extract just the JSON part
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            content = content[start:end]
+        
+        logger.debug(f"Attempting to parse OpenAI response: {content}")
         evaluation = json.loads(content)
         
         # Validate response structure
@@ -172,13 +214,24 @@ def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, an
         
         return evaluation
         
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing failed for obscurity evaluation: {e}")
+        logger.error(f"Raw OpenAI response: {response.choices[0].message.content if 'response' in locals() else 'No response'}")
+        # Return default values instead of failing
+        return {
+            "is_too_obscure": False,
+            "familiarity_score": 7,
+            "reasoning": f"Evaluation failed due to JSON parsing error: {e}",
+            "target_audience": "Unknown due to evaluation error"
+        }
     except Exception as e:
         logger.error(f"Obscurity evaluation failed: {e}")
+        logger.error(f"Full error details: {type(e).__name__}: {str(e)}")
         # Default to "not too obscure" to avoid blocking generation
         return {
             "is_too_obscure": False,
             "familiarity_score": 7,
-            "reasoning": "Evaluation failed, defaulting to acceptable",
+            "reasoning": f"Evaluation failed: {str(e)}",
             "target_audience": "Unknown due to evaluation error"
         }
 
@@ -266,14 +319,15 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         # Get OpenAI client (creates it if needed)
         openai_client = get_openai_client()
         
-        response = openai_client.chat.completions.create(
+        response = call_openai_with_retry(
+            openai_client,
             model=settings.OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.7,  # Some creativity, but not too random
-            max_tokens=1000,   # Enough for detailed response
+            max_tokens=1000   # Enough for detailed response
         )
         
         # Extract the generated content

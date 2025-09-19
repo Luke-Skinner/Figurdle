@@ -26,15 +26,14 @@ allowed_origins = [
     "http://127.0.0.1:3003",
 ]
 
-#Vercel Domain
+# Vercel Domain
 if settings.ENVIRONMENT == "production":
     allowed_origins.extend([
         "https://figurdle.vercel.app",
-        "https://figurdle-web.vercel.app", 
+        "https://figurdle-web.vercel.app",
         "https://figurdle-git-main.vercel.app"
     ])
-    # Temporary: allow all origins to debug CORS
-    allowed_origins = ["*"]
+    # Note: Cannot use ["*"] with credentials=True
 
 app.add_middleware(
     CORSMiddleware,

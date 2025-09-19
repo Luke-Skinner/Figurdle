@@ -22,10 +22,17 @@ Make sure your FastAPI backend is running on port 8080 for local development, or
 
 ## Features
 
-- **Daily Historical Characters**: AI-generated puzzles with OpenAI GPT-4o-mini
+- **Daily Famous Figures**: AI-generated puzzles featuring any famous person with OpenAI GPT-4o-mini
+- **Complete No-Repeats System**: Database tracking ensures no character appears twice
+- **Daily Play Restriction**: Cookie-based session system enforces one play per day
 - **Automated Daily Updates**: New puzzles automatically generated at 12:01 AM PST
 - **Progressive Hint System**: Get hints one by one as you make incorrect guesses
-- **Clean, Responsive UI**: Built with Tailwind CSS for all screen sizes
+- **Dark/Light Mode**: Complete theme system with localStorage persistence
+- **Custom Backgrounds**: Theme-specific PNG background support
+- **Component Architecture**: Modular React components for maintainability
+- **Integrated Feedback**: Streamlined feedback within hints area
+- **Resilient Error Handling**: Graceful fallbacks for development issues
+- **Clean, Responsive UI**: Built with advanced Tailwind CSS for all screen sizes
 - **Real-time Validation**: Instant feedback on guesses with HMAC security
 
 ## Tech Stack
@@ -41,9 +48,20 @@ Make sure your FastAPI backend is running on port 8080 for local development, or
 src/
 ├── app/
 │   ├── page.tsx      # Main game interface
-│   └── layout.tsx    # Root layout
+│   ├── layout.tsx    # Root layout with ThemeProvider
+│   └── globals.css   # Global styles with animations
+├── components/
+│   ├── GameHeader.tsx         # Title, theme toggle, rules
+│   ├── PuzzleInfo.tsx         # Date, attempts, question mark
+│   ├── HintsList.tsx          # Progressive hints with feedback
+│   ├── GuessForm.tsx          # Input form with animations
+│   ├── ThemeToggle.tsx        # Dark/light mode switcher
+│   ├── RulesModal.tsx         # Game rules modal
+│   └── GameOverMessage.tsx    # End game states
+├── contexts/
+│   └── ThemeContext.tsx       # Theme management
 └── lib/
-    └── api.ts        # API integration
+    └── api.ts                 # API integration with session handling
 ```
 
 ## Environment Variables
@@ -81,5 +99,12 @@ The app communicates with the FastAPI backend through:
 
 - `GET /puzzle/today` - Fetch daily puzzle metadata
 - `POST /guess` - Submit guesses and receive feedback
+- `GET /session/status` - Check session and play status
+- `POST /session/complete` - Mark session as completed
+- `POST /session/update-progress` - Update session progress
 
-All API requests are handled in `src/lib/api.ts` with proper error handling and TypeScript types.
+All API requests are handled in `src/lib/api.ts` with:
+- Proper error handling and TypeScript types
+- Cookie-based session management
+- Resilient fallbacks for development environment issues
+- HMAC signature validation for security

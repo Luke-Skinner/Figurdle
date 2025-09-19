@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "../contexts/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Figurdle - Daily Historical Character Guessing Game",
-  description: "Guess the historical character with daily hints. A new puzzle every day!",
+  title: "Figurdle - Daily Famous Figure Guessing Game",
+  description: "Guess the famous figure with daily hints. From history to entertainment, science to sports - a new puzzle every day!",
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({
@@ -27,7 +31,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

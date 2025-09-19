@@ -4,12 +4,18 @@ import {
   getTodayPuzzle, submitGuess, getSessionStatus, completeSession, updateProgress,
   type PublicPuzzle, type GuessOut, type SessionStatus
 } from "../lib/api";
+import GameHeader from "../components/GameHeader";
+import PuzzleInfo from "../components/PuzzleInfo";
+import AlreadyPlayedMessage from "../components/AlreadyPlayedMessage";
+import HintsList from "../components/HintsList";
+import GuessForm from "../components/GuessForm";
+import GameOverMessage from "../components/GameOverMessage";
+import { useTheme } from "../contexts/ThemeContext";
 
 export default function Home() {
   const [puzzle, setPuzzle] = useState<PublicPuzzle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [guess, setGuess] = useState("");
   const [result, setResult] = useState<GuessOut | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hints, setHints] = useState<string[]>([]); // local revealed hints
@@ -18,6 +24,13 @@ export default function Home() {
   const [isGameOver, setIsGameOver] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
   const [attemptCount, setAttemptCount] = useState(0);
+  const [lastGuessResult, setLastGuessResult] = useState<{
+    isCorrect: boolean;
+    hasNewHint: boolean;
+    message?: string;
+  } | null>(null);
+  const [shouldShake, setShouldShake] = useState(false);
+  const { isDark } = useTheme();
 
   useEffect(() => {
     (async () => {
@@ -56,13 +69,13 @@ export default function Home() {
     })();
   }, []);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleGuessSubmit(guess: string) {
     if (!puzzle || !sessionStatus?.can_play) return;
 
     setSubmitting(true);
     setError(null);
     setResult(null);
+    setLastGuessResult(null);
 
     const newAttemptCount = attemptCount + 1;
     setAttemptCount(newAttemptCount);
@@ -79,45 +92,85 @@ export default function Home() {
 
       let newRevealedCount = revealedCount;
 
-      // If backend tells us to reveal a hint, append it and bump local count
-      if (r.reveal_next_hint && r.next_hint) {
+      // Set feedback based on result
+      if (r.correct) {
+        setLastGuessResult({
+          isCorrect: true,
+          hasNewHint: false,
+          message: "Well done!"
+        });
+      } else if (r.reveal_next_hint && r.next_hint) {
+        // If backend tells us to reveal a hint, append it and bump local count
         setHints((prev) => [...prev, r.next_hint!]);
         newRevealedCount = revealedCount + 1;
         setRevealedCount(newRevealedCount);
+        setLastGuessResult({
+          isCorrect: false,
+          hasNewHint: true
+        });
+      } else if (!r.correct && !r.reveal_next_hint) {
+        // This is for wrong answer with no more hints
+        setLastGuessResult({
+          isCorrect: false,
+          hasNewHint: false,
+          message: "Try again!"
+        });
       }
 
-      // Update progress on server
-      await updateProgress({
-        attempts: newAttemptCount,
-        hints_revealed: newRevealedCount
-      });
+      // Add shake for any incorrect answer
+      if (!r.correct) {
+        setShouldShake(true);
+        setTimeout(() => setShouldShake(false), 500);
+      }
+
+      // Update progress on server (only if session exists) - Optional, don't block gameplay
+      if (sessionStatus && sessionStatus.can_play) {
+        try {
+          await updateProgress({
+            attempts: newAttemptCount,
+            hints_revealed: newRevealedCount
+          });
+        } catch (progressError) {
+          console.warn("Progress update failed (session issue), continuing game:", progressError);
+          // Don't block the game if progress tracking fails
+          // This is likely a development environment cookie issue
+        }
+      }
 
       // Handle game ending conditions
       if (r.correct) {
-        setGuess("");
         setIsVictorious(true);
-        // Complete session as won
-        await completeSession({
-          result: 'won',
-          attempts: newAttemptCount,
-          hints_revealed: newRevealedCount
-        });
-        // Update session status
-        const updatedSession = await getSessionStatus();
-        setSessionStatus(updatedSession);
+        // Complete session as won (optional, don't block gameplay)
+        try {
+          await completeSession({
+            result: 'won',
+            attempts: newAttemptCount,
+            hints_revealed: newRevealedCount
+          });
+          // Update session status
+          const updatedSession = await getSessionStatus();
+          setSessionStatus(updatedSession);
+        } catch (sessionError) {
+          console.warn("Session completion failed (development cookie issue), continuing game:", sessionError);
+          // Don't block victory state if session tracking fails
+        }
       } else if (!r.correct && !r.reveal_next_hint) {
         // Game over: hints exhausted, wrong guess
-        setGuess("");
         setIsGameOver(true);
-        // Complete session as lost
-        await completeSession({
-          result: 'lost',
-          attempts: newAttemptCount,
-          hints_revealed: newRevealedCount
-        });
-        // Update session status
-        const updatedSession = await getSessionStatus();
-        setSessionStatus(updatedSession);
+        // Complete session as lost (optional, don't block gameplay)
+        try {
+          await completeSession({
+            result: 'lost',
+            attempts: newAttemptCount,
+            hints_revealed: newRevealedCount
+          });
+          // Update session status
+          const updatedSession = await getSessionStatus();
+          setSessionStatus(updatedSession);
+        } catch (sessionError) {
+          console.warn("Session completion failed (development cookie issue), continuing game:", sessionError);
+          // Don't block game over state if session tracking fails
+        }
       }
     }
     catch (e: unknown) {
@@ -128,149 +181,167 @@ export default function Home() {
     }
   }
 
-  if (loading) return <main className="p-6">Loading…</main>;
-  if (error) return <main className="p-6 text-red-600">Error: {error}</main>;
+  // Loading and error states
+  if (loading) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center
+        ${isDark
+          ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900'
+          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+        }`}>
+        <div className="text-center space-y-4">
+          <div className={`animate-spin rounded-full h-12 w-12 border-4 border-t-transparent mx-auto
+            ${isDark ? 'border-blue-400' : 'border-blue-600'}`}></div>
+          <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+            Loading today&apos;s puzzle...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center p-6
+        ${isDark
+          ? 'bg-gradient-to-br from-red-900 via-pink-900 to-red-900'
+          : 'bg-gradient-to-br from-red-50 via-pink-50 to-red-50'
+        }`}>
+        <div className={`rounded-2xl shadow-2xl p-8 max-w-md w-full text-center
+          ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4
+            ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
+            <svg className={`w-8 h-8 ${isDark ? 'text-red-400' : 'text-red-600'}`}
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+            Oops! Something went wrong
+          </h2>
+          <p className={`mb-4 ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className={`px-6 py-2 rounded-lg transition-colors
+              ${isDark
+                ? 'bg-red-600 hover:bg-red-500 text-white'
+                : 'bg-red-600 hover:bg-red-700 text-white'
+              }`}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <main className="p-6 max-w-xl space-y-6">
-      <h1 className="text-2xl font-semibold">Figurdle</h1>
+    <div className="min-h-screen relative">
+      {/* Custom PNG Background */}
+      <div className="absolute inset-0">
+        {/* Dark Mode Background */}
+        <div
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500
+            ${isDark ? 'opacity-100' : 'opacity-0'}`}
+          style={{
+            backgroundImage: 'url(/backgrounds/dark-background.png)',
+            backgroundColor: '#1f2937' // Fallback color if image doesn't load
+          }}
+        />
 
-      {puzzle && (
-        <div className="rounded-2xl p-4 shadow border space-y-1">
-          <div className="text-sm text-gray-500">Date: {puzzle.puzzle_date}</div>
-          <div className="text-sm">Hints revealed: {revealedCount}</div>
-          {sessionStatus && (
-            <div className="text-sm">
-              Attempts: {attemptCount}
-              {sessionStatus.has_played && !sessionStatus.can_play && (
-                <span className="ml-2 px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs">
-                  Completed: {sessionStatus.result === 'won' ? 'Won' : 'Lost'}
-                </span>
+        {/* Light Mode Background */}
+        <div
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500
+            ${isDark ? 'opacity-0' : 'opacity-100'}`}
+          style={{
+            backgroundImage: 'url(/backgrounds/light-background.png)',
+            backgroundColor: '#f8fafc' // Fallback color if image doesn't load
+          }}
+        />
+
+        {/* Overlay for better text readability */}
+        <div className={`absolute inset-0 transition-all duration-500
+          ${isDark
+            ? 'bg-black/20'
+            : 'bg-white/20'
+          }`}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10">
+        <div className="container mx-auto px-4 py-8 max-w-4xl">
+          <div className="space-y-8">
+            {/* Game Header */}
+            <GameHeader className="mb-12" />
+
+            {/* Game Content */}
+            <div className="max-w-2xl mx-auto space-y-6">
+              {/* Puzzle Info */}
+              {puzzle && (
+                <PuzzleInfo
+                  puzzleDate={puzzle.puzzle_date}
+                  attempts={attemptCount}
+                  sessionStatus={sessionStatus}
+                />
               )}
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Show message if user has already played today */}
-      {sessionStatus && !sessionStatus.can_play && !isVictorious && !isGameOver && (
-        <div className="rounded-xl border-2 bg-blue-50 border-blue-200 p-4 text-center">
-          <h2 className="text-lg font-semibold text-blue-800 mb-2">
-            You've already played today!
-          </h2>
-          <p className="text-blue-700 mb-2">
-            Result: <span className="font-semibold">{sessionStatus.result === 'won' ? 'Victory' : 'Lost'}</span>
-          </p>
-          <p className="text-blue-700 text-sm">
-            You completed today's puzzle with {sessionStatus.attempts} attempts and {sessionStatus.hints_revealed} hints revealed.
-          </p>
-          <p className="text-blue-600 text-sm mt-3">
-            Come back tomorrow for a new challenge!
-          </p>
-        </div>
-      )}
+              {/* Already Played Message */}
+              {sessionStatus && !sessionStatus.can_play && !isVictorious && !isGameOver && (
+                <AlreadyPlayedMessage sessionStatus={sessionStatus} />
+              )}
 
-      {/* Hints list */}
-      {hints.length > 0 && (
-        <div className="rounded-xl border p-3 space-y-1">
-          <div className="font-medium">Hints</div>
-          <ul className="list-disc pl-5">
-            {hints.map((h, i) => <li key={i}>{h}</li>)}
-          </ul>
-        </div>
-      )}
+              {/* Hints List */}
+              <HintsList hints={hints} lastGuessResult={lastGuessResult} />
 
-      {/* Only show form if user can still play */}
-      {sessionStatus?.can_play && (
-        <form onSubmit={isVictorious || isGameOver ? (e) => e.preventDefault() : onSubmit} className="flex gap-3">
-          <input
-            className={`flex-1 rounded-xl border-2 px-4 py-3 text-lg text-black focus:outline-none transition-colors ${
-              isVictorious || isGameOver
-                ? "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
-                : "border-gray-300 focus:border-blue-500"
-            }`}
-            placeholder={isVictorious ? "Puzzle completed!" : isGameOver ? "Game over!" : "Enter your guess…"}
-            value={guess}
-            onChange={(e) => setGuess(e.target.value)}
-            disabled={isVictorious || isGameOver}
-          />
-          <button
-            className="rounded-xl px-6 py-3 bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-            disabled={submitting || !guess.trim() || !puzzle || isVictorious || isGameOver}
-          >
-            {submitting ? "Checking…" : isVictorious ? "Completed" : isGameOver ? "Game Over" : "Submit"}
-          </button>
-        </form>
-      )}
+              {/* Guess Form */}
+              {sessionStatus?.can_play && (
+                <GuessForm
+                  onSubmit={handleGuessSubmit}
+                  disabled={!sessionStatus?.can_play || !puzzle}
+                  loading={submitting}
+                  isVictorious={isVictorious}
+                  isGameOver={isGameOver}
+                  triggerShake={shouldShake}
+                />
+              )}
 
-      {result && !isVictorious && !isGameOver && (
-        <div className={`p-4 rounded-xl border-2 ${
-          result.correct 
-            ? "bg-green-50 border-green-200 text-green-800" 
-            : "bg-orange-50 border-orange-200 text-orange-800"
-        }`}>
-          <div className="font-semibold text-lg">
-            {result.correct ? "Correct!" : "Try again"}
-          </div>
-          {/* Show normalized answer when correct or when backend provides it */}
-          {result.normalized_answer && (
-            <div className="mt-2 text-sm font-medium">
-              Answer: <span className="font-bold">{result.normalized_answer}</span>
-            </div>
-          )}
-          {/* If a hint was revealed this round, echo it prominently */}
-          {result.reveal_next_hint && result.next_hint && (
-            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 text-sm">
-              <strong>New hint:</strong> {result.next_hint}
-            </div>
-          )}
-        </div>
-      )}
 
-      {isGameOver && (
-        <div className="p-4 rounded-xl border-2 bg-red-50 border-red-200 text-red-800">
-          <div className="font-semibold text-lg">Game Over</div>
-          {result?.normalized_answer && (
-            <div className="mt-2 text-sm font-medium">
-              Answer: <span className="font-bold">{result.normalized_answer}</span>
-            </div>
-          )}
-          <div className="mt-2 text-sm text-red-600">
-            All hints were revealed. Come back tomorrow for a new challenge!
-          </div>
-        </div>
-      )}
+              {/* Game Over Message */}
+              <GameOverMessage
+                isVictorious={isVictorious}
+                isGameOver={isGameOver}
+                result={result}
+                hints={hints}
+                revealedCount={revealedCount}
+                attempts={attemptCount}
+              />
 
-      {isVictorious && result && (
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 text-center space-y-4">
-          <div className="space-y-2">
-            <div className="text-2xl font-bold text-green-800">Congratulations!</div>
-            <div className="text-green-700">You solved today&apos;s Figurdle!</div>
-          </div>
-          
-          <div className="bg-white/60 rounded-xl p-4 space-y-2">
-            <div className="font-semibold text-green-800">
-              Answer: <span className="text-lg">{result.normalized_answer}</span>
-            </div>
-            <div className="text-sm text-green-600">
-              Solved with {revealedCount} hint{revealedCount !== 1 ? 's' : ''} revealed
+              {/* Error Display */}
+              {error && !loading && (
+                <div className={`rounded-2xl border shadow-lg p-6 text-center backdrop-blur-sm
+                  ${isDark
+                    ? 'bg-red-900/80 border-red-700'
+                    : 'bg-red-50/80 border-red-200'
+                  }`}>
+                  <p className={`font-medium ${isDark ? 'text-red-200' : 'text-red-800'}`}>
+                    Error: {error}
+                  </p>
+                  <button
+                    onClick={() => setError(null)}
+                    className={`mt-2 text-sm underline transition-colors
+                      ${isDark ? 'text-red-300 hover:text-red-100' : 'text-red-600 hover:text-red-800'}`}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
-
-          {hints.length > 0 && (
-            <div className="bg-white/60 rounded-xl p-4 text-left">
-              <div className="font-medium text-green-800 mb-2">Hints you revealed:</div>
-              <ul className="list-disc pl-5 text-sm text-green-700 space-y-1">
-                {hints.map((h, i) => <li key={i}>{h}</li>)}
-              </ul>
-            </div>
-          )}
-
-          <div className="text-sm text-green-600 pt-2">
-            Come back tomorrow for a new historical character!
-          </div>
         </div>
-      )}
-    </main>
+      </div>
+    </div>
   );
 }

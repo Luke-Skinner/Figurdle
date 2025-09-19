@@ -43,26 +43,63 @@ def get_openai_client():
             raise CharacterGenerationError(f"Failed to initialize OpenAI client: {e}")
     return client
 
-def get_recent_characters(days_back: int = 90) -> List[str]:
-    """Get all character names from the last N days to avoid duplicates."""
+def get_all_used_characters() -> List[str]:
+    """Get ALL character names ever used to prevent any repeats."""
     from .db import SessionLocal
-    from .models import Puzzle
-    from datetime import datetime, timedelta
-    import pytz
-    
-    cutoff_date = (datetime.now(pytz.timezone("America/Los_Angeles")) - timedelta(days=days_back)).date()
-    
+    from .models import Puzzle, UsedCharacter
+
     with SessionLocal() as db:
-        recent_puzzles = db.query(Puzzle).filter(Puzzle.puzzle_date >= cutoff_date).all()
-        
         characters = []
-        for puzzle in recent_puzzles:
-            # Add main answer
+
+        # Get from puzzles table
+        puzzles = db.query(Puzzle).all()
+        for puzzle in puzzles:
             characters.append(puzzle.answer.lower())
-            # Add all aliases
             characters.extend([alias.lower() for alias in puzzle.aliases])
-        
+
+        # Get from used_characters table
+        used_chars = db.query(UsedCharacter).all()
+        characters.extend([char.character_name.lower() for char in used_chars])
+
         return list(set(characters))  # Remove duplicates
+
+def record_used_character(character_data: Dict[str, any], puzzle_date) -> None:
+    """Record character and all aliases as used."""
+    from .db import SessionLocal
+    from .models import UsedCharacter
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    with SessionLocal() as db:
+        try:
+            # Record main answer
+            main_char = UsedCharacter(
+                character_name=character_data["answer"].lower(),
+                puzzle_date=puzzle_date
+            )
+            db.add(main_char)
+
+            # Record all aliases
+            for alias in character_data["aliases"]:
+                alias_char = UsedCharacter(
+                    character_name=alias.lower(),
+                    puzzle_date=puzzle_date
+                )
+                db.add(alias_char)
+
+            db.commit()
+            logger.info(f"Recorded {character_data['answer']} and {len(character_data['aliases'])} aliases as used")
+
+        except Exception as e:
+            db.rollback()
+            # Don't fail the puzzle creation if recording fails
+            logger.warning(f"Failed to record used character {character_data['answer']}: {e}")
+
+def get_recent_characters(days_back: int = 90) -> List[str]:
+    """Get all character names from the last N days to avoid duplicates. (Legacy function - use get_all_used_characters())"""
+    # For backward compatibility, just call the new function
+    return get_all_used_characters()
 
 def validate_hints_dont_reveal_answer(character_data: Dict[str, any]) -> bool:
     """
@@ -237,14 +274,14 @@ def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, an
 
 def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 1) -> Dict[str, any]:
     """
-    Generate a new historical figure character for today's puzzle using OpenAI.
-    
+    Generate a new famous figure character for today's puzzle using OpenAI.
+
     Returns a dictionary with:
-    - answer: The main name of the character (e.g., "Napoleon Bonaparte")
-    - aliases: List of alternative names (e.g., ["Napoleon", "Napoléon Bonaparte"])  
+    - answer: The main name of the character (e.g., "Albert Einstein", "Taylor Swift")
+    - aliases: List of alternative names (e.g., ["Einstein", "Albert", "Tay-Tay"])
     - hints: List of 7 progressive hints from vague to specific
     - source_urls: List of relevant Wikipedia/reference URLs
-    
+
     Raises CharacterGenerationError if generation fails.
     """
     
@@ -260,11 +297,11 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     # Adjust difficulty based on attempt number
     difficulty_guidance = ""
     if attempt == 1:
-        difficulty_guidance = "Choose well-known historical figures that educated players would recognize."
+        difficulty_guidance = "Choose well-known figures from any field that educated players would recognize."
     elif attempt == 2:
-        difficulty_guidance = "You may choose slightly more obscure but still notable historical figures."
+        difficulty_guidance = "You may choose slightly more obscure but still notable figures from any field."
     else:
-        difficulty_guidance = "Choose any historically significant figure, even if less commonly known."
+        difficulty_guidance = "Choose any significant figure from any field, even if less commonly known."
     
     # Create the JSON template separately to avoid any f-string processing
     json_template = '''{
@@ -284,12 +321,14 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     
     # Craft a detailed prompt for consistent, high-quality character generation
     system_prompt_parts = [
-        'You are a game designer creating daily puzzles for "Figurdle" - a Wordle-like game where players guess historical figures based on progressive hints.',
+        'You are a game designer creating daily puzzles for "Figurdle" - a Wordle-like game where players guess famous figures based on progressive hints.',
         exclusion_text,
-        "\nGenerate a historical figure that meets these criteria:",
-        "- Historically significant (not just famous for being famous)",
+        "\nGenerate a notable figure that meets these criteria:",
+        "- Famous or significant person from ANY field (not just historical)",
+        "- Can be from: history, science, entertainment, sports, politics, literature, art, technology, business, etc.",
+        "- Can be living or deceased, any time period or culture",
+        "- Should be recognizable to a general educated audience",
         "- Has interesting, distinctive facts for hints",
-        "- Can be from any time period or culture",
         "- " + difficulty_guidance,
         "\nReturn your response as valid JSON with this exact structure:",
         json_template,
@@ -311,7 +350,7 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     ]
     
     system_prompt = '\n'.join(system_prompt_parts)
-    user_prompt = "Generate a historical figure for today's puzzle. Choose someone interesting and well-known, but not too obvious. Make the hints engaging and educational."
+    user_prompt = "Generate a famous figure for today's puzzle. Choose someone interesting and well-known from any field, but not too obvious. Make the hints engaging and educational."
 
     try:
         logger.info("Requesting character generation from OpenAI")
@@ -389,62 +428,37 @@ def is_duplicate(character_data: Dict[str, any], avoid_list: List[str]) -> bool:
     return False
 
 def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
-    """Generate character with AI-driven obscurity evaluation."""
+    """Generate character with complete duplicate prevention and AI-driven obscurity evaluation."""
     from .config import settings
-    
-    # Phase 1: Try with strict duplicate prevention
-    recent_characters = get_recent_characters(settings.DUPLICATE_PREVENTION_DAYS)
-    logger.info(f"Phase 1: Avoiding {len(recent_characters)} characters from last {settings.DUPLICATE_PREVENTION_DAYS} days")
-    
-    for attempt in range(3):  # Try a few times with strict rules
+
+    # Get ALL used characters (complete prevention)
+    all_used_characters = get_all_used_characters()
+    logger.info(f"Avoiding {len(all_used_characters)} previously used characters")
+
+    for attempt in range(5):  # More attempts since we have stricter rules
         try:
-            character_data = generate_daily_character(recent_characters, attempt + 1)
-            
+            character_data = generate_daily_character(all_used_characters, attempt + 1)
+
+            # Check for duplicates
+            if is_duplicate(character_data, all_used_characters):
+                logger.info(f"Duplicate detected: {character_data['answer']}, retrying...")
+                continue
+
             # AI evaluation
             evaluation = evaluate_character_obscurity(character_data)
-            
+
             if not evaluation["is_too_obscure"]:
-                logger.info(f"✅ Character approved: {character_data['answer']} "
+                logger.info(f"Character approved: {character_data['answer']} "
                            f"(Score: {evaluation['familiarity_score']}/10)")
                 return character_data
             else:
-                logger.info(f"❌ Character too obscure: {character_data['answer']} "
-                           f"(Score: {evaluation['familiarity_score']}/10) - {evaluation['reasoning']}")
-                
+                logger.info(f"Character too obscure: {character_data['answer']}, retrying...")
+
         except Exception as e:
-            logger.warning(f"Phase 1 attempt {attempt + 1} failed: {e}")
-    
-    # Phase 2: Allow older duplicates (30+ days)
-    fallback_characters = get_recent_characters(settings.FALLBACK_DUPLICATE_DAYS)
-    logger.info(f"Phase 2: AI deemed strict options too obscure. "
-               f"Allowing duplicates older than {settings.FALLBACK_DUPLICATE_DAYS} days")
-    
-    for attempt in range(3):
-        try:
-            character_data = generate_daily_character(fallback_characters, attempt + 4)
-            
-            evaluation = evaluate_character_obscurity(character_data)
-            
-            if not evaluation["is_too_obscure"]:
-                logger.info(f"✅ Fallback character approved: {character_data['answer']} "
-                           f"(Score: {evaluation['familiarity_score']}/10)")
-                return character_data
-            else:
-                logger.info(f"❌ Fallback character still too obscure: {character_data['answer']} "
-                           f"(Score: {evaluation['familiarity_score']}/10)")
-                
-        except Exception as e:
-            logger.warning(f"Phase 2 attempt {attempt + 1} failed: {e}")
-    
-    # Phase 3: Last resort - accept any character that generates successfully
-    logger.warning("Phase 3: Accepting any character to ensure service availability")
-    character_data = generate_daily_character([], 99)  # No restrictions
-    
-    evaluation = evaluate_character_obscurity(character_data)
-    logger.info(f"⚠️ Last resort character: {character_data['answer']} "
-               f"(Score: {evaluation['familiarity_score']}/10) - {evaluation['reasoning']}")
-    
-    return character_data
+            logger.warning(f"Attempt {attempt + 1} failed: {e}")
+
+    # If all attempts fail, raise error rather than accepting duplicates
+    raise CharacterGenerationError("Could not generate unique, appropriate character after 5 attempts")
 
 
 def test_generation() -> Dict[str, any]:

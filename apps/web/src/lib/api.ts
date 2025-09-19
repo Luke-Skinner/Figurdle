@@ -63,15 +63,13 @@ export const getSessionStatus = () =>
   });
 
 export const completeSession = (body: CompleteSessionRequest) =>
-  http<{success: boolean; result?: string; message?: string}>("/session/complete", {
+  http<{success: boolean; result?: string; message?: string}>(`/session/complete?result=${body.result}&attempts=${body.attempts}&hints_revealed=${body.hints_revealed}`, {
     method: "POST",
-    body: JSON.stringify(body),
     credentials: "include"
   });
 
 export const updateProgress = (body: UpdateProgressRequest) =>
-  http<{success: boolean}>("/session/update-progress", {
+  http<{success: boolean}>(`/session/update-progress?attempts=${body.attempts}&hints_revealed=${body.hints_revealed}`, {
     method: "POST",
-    body: JSON.stringify(body),
     credentials: "include"
   });

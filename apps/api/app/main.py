@@ -4,7 +4,7 @@ from .db import Base, engine, SessionLocal
 from .models import Puzzle, UserSession
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
-from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError
+from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, record_used_character
 from datetime import datetime, date
 import pytz, hmac, hashlib, json, secrets
 import logging
@@ -108,7 +108,10 @@ def rotate():
             
             db.add(new_puzzle)
             db.commit()
-            
+
+            # Record character as used to prevent future duplicates
+            record_used_character(character_data, today_pst())
+
             logger.info(f"Successfully created new puzzle: {character_data['answer']}")
             return {
                 "status": "created",
@@ -150,6 +153,10 @@ def get_puzzle_today():
 
                 db.add(p)
                 db.commit()
+
+                # Record character as used to prevent future duplicates
+                record_used_character(character_data, today_pst())
+
                 logger.info(f"Auto-generated puzzle: {character_data['answer']}")
 
             except CharacterGenerationError as e:

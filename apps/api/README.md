@@ -4,10 +4,14 @@ FastAPI backend for the daily historical character guessing game.
 
 ## Features
 
-- **AI Character Generation**: Uses OpenAI GPT-4o-mini to generate daily historical characters with hints
+- **AI Character Generation**: Uses OpenAI GPT-4o-mini to generate daily famous figures with hints
+- **Complete No-Repeats System**: UsedCharacter model ensures no duplicate puzzles ever
+- **Daily Play Restriction**: Cookie-based session management enforces one play per day per user
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hint System**: Reveals hints one by one as players make incorrect guesses
+- **Session Management**: Comprehensive user session tracking with progress persistence
 - **Secure Validation**: HMAC signature verification for API requests
+- **Resilient Error Handling**: Graceful fallbacks for development environment issues
 - **Database Integration**: PostgreSQL with SQLAlchemy and Alembic migrations
 - **Cloud-Ready**: Configured for Google Cloud Run with CI/CD pipeline support
 
@@ -66,6 +70,12 @@ FastAPI backend for the daily historical character guessing game.
 - `GET /puzzle/today` - Get today's puzzle metadata
 - `POST /guess` - Submit a guess and get result
 
+### Session Endpoints
+
+- `GET /session/status` - Get current session status and play eligibility
+- `POST /session/complete` - Mark session as completed (won/lost)
+- `POST /session/update-progress` - Update session progress (attempts/hints)
+
 ### Admin Endpoints
 
 - `GET /admin/status` - Check if today's puzzle exists and view creation details
@@ -112,6 +122,21 @@ FastAPI backend for the daily historical character guessing game.
 - `aliases`: List of acceptable alternative answers
 - `hints`: Progressive hints array
 - `source_urls`: Reference URLs for the character
+
+### UsedCharacter Table
+- `id`: Primary key
+- `character_name`: Character name (unique constraint)
+- `puzzle_date`: Date when character was used
+- `created_at`: Timestamp of record creation
+
+### UserSession Table
+- `session_id`: Primary key (UUID)
+- `can_play`: Whether user can still play today
+- `has_played`: Whether user has played today
+- `result`: Final result (won/lost/null)
+- `attempts`: Number of guesses made
+- `hints_revealed`: Number of hints revealed
+- `completed_at`: Timestamp when session completed
 
 ## Deployment
 

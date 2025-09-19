@@ -1,6 +1,6 @@
 # Figurdle
 
-A daily historical character guessing game inspired by Wordle.
+A daily historical character guessing game inspired by the -dle type games.
 
 ## Quick Start
 
@@ -78,9 +78,15 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Key Features
 
-- **AI-Generated Characters**: Daily historical figures created with OpenAI GPT-4o-mini
+- **AI-Generated Characters**: Daily famous figures created with OpenAI GPT-4o-mini
+- **No Character Repeats**: Complete duplicate prevention system ensures every puzzle is unique
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hints**: Get hints one by one as you make incorrect guesses
+- **Daily Play Restriction**: Cookie-based session system enforces one play per day per user
+- **Dark/Light Mode**: Complete theme system with user preference persistence
 - **Secure Validation**: HMAC signature verification for API integrity
+- **Resilient Error Handling**: Graceful fallbacks for development environment issues
+- **Modern Component Architecture**: Modular React components with advanced Tailwind CSS
+- **Integrated Feedback System**: Streamlined user feedback within the hints area
+- **Custom Backgrounds**: Theme-specific PNG background support
 - **CI/CD Pipeline**: Automated deployment via Google Cloud Run with repository integration
-- **Modern UI**: Clean, responsive interface built with Next.js 15 + Tailwind CSS

@@ -60,3 +60,6 @@ service-account-key.json
 
 # Claude Code documentation
 CLAUDE.md
+
+# Text Files
+*.txt

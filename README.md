@@ -85,8 +85,8 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day per user
 - **Dark/Light Mode**: Complete theme system with user preference persistence
 - **Secure Validation**: HMAC signature verification for API integrity
-- **Resilient Error Handling**: Graceful fallbacks for development environment issues
-- **Modern Component Architecture**: Modular React components with advanced Tailwind CSS
+- **Resilient Error Handling**: Fallbacks for development environment issues
+- **Modern Component Architecture**: Modular React components with Tailwind CSS
 - **Integrated Feedback System**: Streamlined user feedback within the hints area
 - **Custom Backgrounds**: Theme-specific PNG background support
 - **CI/CD Pipeline**: Automated deployment via Google Cloud Run with repository integration

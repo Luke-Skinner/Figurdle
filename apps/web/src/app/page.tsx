@@ -41,24 +41,34 @@ export default function Home() {
         const session = await getSessionStatus();
         setSessionStatus(session);
 
+        const p = await getTodayPuzzle();
+        setPuzzle(p);
+
         // If user has already completed today's puzzle, show completed state
         if (session.has_played && !session.can_play) {
           setIsVictorious(session.result === 'won');
           setIsGameOver(session.result === 'lost');
           setAttemptCount(session.attempts);
           setRevealedCount(session.hints_revealed);
-        }
 
-        const p = await getTodayPuzzle();
-        setPuzzle(p);
+          // Set revealed hints from puzzle response
+          setHints(p.revealed_hints || []);
+        } else if (session.can_play && session.has_played) {
+          // User is mid-game - restore their progress
+          setRevealedCount(session.hints_revealed || 0);
+          setAttemptCount(session.attempts || 0);
+          setIsVictorious(false);
+          setIsGameOver(false);
 
-        // Only reset state if user can still play
-        if (session.can_play) {
-          setHints([]); // reset hints on load
-          setRevealedCount(session.hints_revealed || 0); // restore from session
-          setAttemptCount(session.attempts || 0); // restore from session
-          setIsVictorious(false); // reset victory state
-          setIsGameOver(false); // reset game over state
+          // Set revealed hints from puzzle response
+          setHints(p.revealed_hints || []);
+        } else {
+          // Fresh game
+          setHints([]);
+          setRevealedCount(0);
+          setAttemptCount(0);
+          setIsVictorious(false);
+          setIsGameOver(false);
         }
 
       } catch (e: unknown) {
@@ -109,12 +119,9 @@ export default function Home() {
           hasNewHint: true
         });
       } else if (!r.correct && !r.reveal_next_hint) {
-        // This is for wrong answer with no more hints
-        setLastGuessResult({
-          isCorrect: false,
-          hasNewHint: false,
-          message: "Try again!"
-        });
+        // This is for wrong answer with no more hints (game over)
+        // Don't show "Try again!" feedback for game over
+        setLastGuessResult(null);
       }
 
       // Add shake for any incorrect answer
@@ -126,6 +133,7 @@ export default function Home() {
       // Update progress on server (only if session exists) - Optional, don't block gameplay
       if (sessionStatus && sessionStatus.can_play) {
         try {
+          console.log("Attempting to update progress:", { attempts: newAttemptCount, hints_revealed: newRevealedCount });
           await updateProgress({
             attempts: newAttemptCount,
             hints_revealed: newRevealedCount
@@ -140,7 +148,7 @@ export default function Home() {
       // Handle game ending conditions
       if (r.correct) {
         setIsVictorious(true);
-        // Complete session as won (optional, don't block gameplay)
+        // Complete session as won
         try {
           await completeSession({
             result: 'won',
@@ -151,13 +159,13 @@ export default function Home() {
           const updatedSession = await getSessionStatus();
           setSessionStatus(updatedSession);
         } catch (sessionError) {
-          console.warn("Session completion failed (development cookie issue), continuing game:", sessionError);
+          console.warn("Session completion failed, continuing game:", sessionError);
           // Don't block victory state if session tracking fails
         }
       } else if (!r.correct && !r.reveal_next_hint) {
         // Game over: hints exhausted, wrong guess
         setIsGameOver(true);
-        // Complete session as lost (optional, don't block gameplay)
+        // Complete session as lost
         try {
           await completeSession({
             result: 'lost',
@@ -168,7 +176,7 @@ export default function Home() {
           const updatedSession = await getSessionStatus();
           setSessionStatus(updatedSession);
         } catch (sessionError) {
-          console.warn("Session completion failed (development cookie issue), continuing game:", sessionError);
+          console.warn("Session completion failed, continuing game:", sessionError);
           // Don't block game over state if session tracking fails
         }
       }

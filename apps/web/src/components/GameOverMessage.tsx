@@ -171,7 +171,7 @@ export default function GameOverMessage({
           {/* Encouragement */}
           <div className="bg-white/70 backdrop-blur-sm rounded-xl p-4 border border-red-200">
             <p className="text-red-700 font-medium">
-              All hints were revealed, but you gave it a great try!
+              Unlucky, all hints revealed and attempts exhausted...
             </p>
           </div>
 

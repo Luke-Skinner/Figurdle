@@ -78,12 +78,16 @@ Google Cloud Run supports automated deployments directly from your Git repositor
    ```
 
 3. **Run database migrations:**
+
+   Use Google Cloud Console SQL Studio to run migrations:
+   1. Go to https://console.cloud.google.com/sql/instances
+   2. Click on your database instance
+   3. Click "Cloud SQL Studio" in the left sidebar
+   4. Run the required CREATE TABLE statements in the query interface
+
+   Alternatively, use command line:
    ```bash
-   # Get Cloud Run URL
-   API_URL=$(gcloud run services describe figurdle-api --region us-central1 --format 'value(status.url)')
-   
-   # Run migrations (you'll need to do this from a local connection or Cloud Shell)
-   # Set up connection to Cloud SQL and run: alembic upgrade head
+   gcloud sql execute-sql [INSTANCE_NAME] --sql="[YOUR_SQL_COMMANDS]"
    ```
 
 ### Update CORS with Vercel Domain

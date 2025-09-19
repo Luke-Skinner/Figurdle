@@ -1,9 +1,11 @@
 from pydantic import BaseModel
+from typing import List
 
 class PublicPuzzle(BaseModel):
     puzzle_date: str
     hints_count: int
     signature: str
+    revealed_hints: List[str] = []
 
 class GuessIn(BaseModel):
     guess: str

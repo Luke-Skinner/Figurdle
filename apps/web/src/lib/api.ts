@@ -16,6 +16,7 @@ export type PublicPuzzle = {
   puzzle_date: string;
   hints_count: number;
   signature: string;
+  revealed_hints?: string[];
 };
 
 export type GuessIn = { 

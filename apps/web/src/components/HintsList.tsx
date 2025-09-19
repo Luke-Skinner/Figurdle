@@ -112,8 +112,8 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
         })}
       </div>
 
-      {/* Feedback Message - Only for incorrect guesses without new hints */}
-      {lastGuessResult && !lastGuessResult.hasNewHint && (
+      {/* Feedback Message - Only for incorrect guesses without new hints, but not for game over */}
+      {lastGuessResult && !lastGuessResult.hasNewHint && lastGuessResult.isCorrect && (
         <div className="px-6 pb-2">
           <div className={`p-4 rounded-xl border text-center transition-all duration-300
             ${lastGuessResult.isCorrect

@@ -63,3 +63,4 @@ CLAUDE.md
 
 # Text Files
 *.txt
+!runtime.txt

@@ -256,6 +256,8 @@ gcloud sql backups list --instance figurdle-db
 - **Vercel**: Free for hobby projects
 - **Total**: ~$7-20/month for typical usage
 
+*Updated: September 2024*
+
 ## Troubleshooting
 
 ### Common Issues

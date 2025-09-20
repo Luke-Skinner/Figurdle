@@ -49,7 +49,9 @@ export type UpdateProgressRequest = {
   hints_revealed: number;
 };
 
-export const getTodayPuzzle = () => http<PublicPuzzle>("/puzzle/today");
+export const getTodayPuzzle = () => http<PublicPuzzle>("/puzzle/today", {
+  credentials: "include"
+});
 export const submitGuess = (body: GuessIn) =>
   http<GuessOut>(`/guess?date=${encodeURIComponent(body.puzzle_date)}&hc=${body.hints_count}`, {
     method: "POST",

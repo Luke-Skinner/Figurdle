@@ -64,6 +64,15 @@ def health_check():
     """Health check endpoint for Cloud Run"""
     return {"status": "healthy", "environment": settings.ENVIRONMENT}
 
+@app.get("/debug/cors")
+def debug_cors():
+    """Debug endpoint to check CORS configuration"""
+    return {
+        "environment": settings.ENVIRONMENT,
+        "allowed_origins": allowed_origins,
+        "total_origins": len(allowed_origins)
+    }
+
 @app.get("/admin/status")
 def generation_status():
     """Check if today's puzzle exists and when it was created."""

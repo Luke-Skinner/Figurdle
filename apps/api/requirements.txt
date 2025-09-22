@@ -1,5 +1,6 @@
 # Production dependencies for Figurdle API
 fastapi==0.104.1
+uvicorn==0.24.0
 uvicorn[standard]==0.24.0
 sqlalchemy==2.0.23
 alembic==1.12.1

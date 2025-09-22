@@ -26,14 +26,8 @@ allowed_origins = [
     "http://127.0.0.1:3003",
 ]
 
-# Check for environment variable override first
-if settings.ALLOWED_ORIGINS:
-    # Split comma-separated origins and add to allowed_origins
-    env_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
-    allowed_origins.extend(env_origins)
-    logger.info(f"Added {len(env_origins)} origins from ALLOWED_ORIGINS env var")
-elif settings.ENVIRONMENT == "production":
-    # Fallback to hardcoded production origins
+# Vercel Domain
+if settings.ENVIRONMENT == "production":
     allowed_origins.extend([
         "https://figurdle.com",
         "https://www.figurdle.com",

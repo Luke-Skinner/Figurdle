@@ -274,7 +274,7 @@ def get_session_status(request: Request, response: Response, figurdle_session: s
             max_age=86400 * 30,  # 30 days
             httponly=True,
             secure=is_production,  # Secure in production, not in development
-            samesite="lax"
+            samesite="none"
         )
         logger.info(f"Created new session: {figurdle_session[:8]}... (secure={settings.ENVIRONMENT == 'production'})")
 

@@ -18,7 +18,7 @@ app = FastAPI(title="Figurdle API", version="1.0.0")
 allowed_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://localhost:3001", 
+    "http://localhost:3001",
     "http://127.0.0.1:3001",
     "http://localhost:3002",
     "http://127.0.0.1:3002",
@@ -26,8 +26,14 @@ allowed_origins = [
     "http://127.0.0.1:3003",
 ]
 
-# Vercel Domain
-if settings.ENVIRONMENT == "production":
+# Check for environment variable override first
+if settings.ALLOWED_ORIGINS:
+    # Split comma-separated origins and add to allowed_origins
+    env_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+    allowed_origins.extend(env_origins)
+    logger.info(f"Added {len(env_origins)} origins from ALLOWED_ORIGINS env var")
+elif settings.ENVIRONMENT == "production":
+    # Fallback to hardcoded production origins
     allowed_origins.extend([
         "https://figurdle.com",
         "https://www.figurdle.com",

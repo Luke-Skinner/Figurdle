@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     # Environment detection
     ENVIRONMENT: str = "development"
     PORT: int = 8080
+
+    # CORS configuration override
+    ALLOWED_ORIGINS: str = ""
     
     # AI-driven duplicate prevention settings
     DUPLICATE_PREVENTION_DAYS: int = 90  # Avoid duplicates from last N days

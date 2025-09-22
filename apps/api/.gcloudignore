@@ -1,0 +1,10 @@
+# Ignore everything except what we need
+*
+!requirements.txt
+!runtime.txt
+!Procfile
+!main.py
+!server.py
+!app/
+!alembic/
+!alembic.ini

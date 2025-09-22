@@ -1,6 +1,6 @@
 # Figurdle
 
-A daily historical character guessing game inspired by the -dle type games.
+A daily historical character guessing game inspired by the -dle type games. Play now at Figurdle.com!
 
 ## Quick Start
 
@@ -43,8 +43,8 @@ npm run dev
 
 **Generate First Puzzle:**
 ```bash
-# With the API running, generate today's puzzle
-curl -X POST http://localhost:8080/admin/rotate
+# With the API running, generate today's puzzle (requires admin auth)
+curl -X POST -H "Content-Length: 0" -H "X-Admin-Key: your-admin-secret" http://localhost:8080/admin/rotate
 ```
 
 ## Project Structure
@@ -84,7 +84,7 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **Progressive Hints**: Get hints one by one as you make incorrect guesses
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day per user
 - **Dark/Light Mode**: Complete theme system with user preference persistence
-- **Secure Validation**: HMAC signature verification for API integrity
+- **Secure Validation**: HMAC signature verification for API integrity and admin endpoint authentication
 - **Resilient Error Handling**: Fallbacks for development environment issues
 - **Modern Component Architecture**: Modular React components with Tailwind CSS
 - **Integrated Feedback System**: Streamlined user feedback within the hints area

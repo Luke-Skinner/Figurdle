@@ -52,6 +52,9 @@ Google Cloud Run supports automated deployments directly from your Git repositor
    DB_NAME=figurdle
    OPENAI_API_KEY=[YOUR_OPENAI_KEY]
    PUZZLE_SIGNING_SECRET=[SECURE_RANDOM_STRING]
+   ADMIN_SECRET_KEY=[SECURE_ADMIN_SECRET]
+   PYTHONPATH=/layers/google.python.pip/pip/lib/python3.11/site-packages
+   ALLOWED_ORIGINS=[OPTIONAL_ADDITIONAL_DOMAINS]
    ```
 
 #### Option B: Manual Deployment
@@ -74,7 +77,9 @@ Google Cloud Run supports automated deployments directly from your Git repositor
      --set-env-vars DB_PASS=[YOUR_PASSWORD] \
      --set-env-vars DB_NAME=figurdle \
      --set-env-vars OPENAI_API_KEY=[YOUR_OPENAI_KEY] \
-     --set-env-vars PUZZLE_SIGNING_SECRET=[SECURE_RANDOM_STRING]
+     --set-env-vars PUZZLE_SIGNING_SECRET=[SECURE_RANDOM_STRING] \
+     --set-env-vars ADMIN_SECRET_KEY=[SECURE_ADMIN_SECRET] \
+     --set-env-vars PYTHONPATH=/layers/google.python.pip/pip/lib/python3.11/site-packages
    ```
 
 3. **Run database migrations:**
@@ -142,6 +147,9 @@ DB_PASS=[YOUR_PASSWORD]
 DB_NAME=figurdle
 OPENAI_API_KEY=[YOUR_OPENAI_KEY]
 PUZZLE_SIGNING_SECRET=[SECURE_RANDOM_STRING]
+ADMIN_SECRET_KEY=[SECURE_ADMIN_SECRET]
+PYTHONPATH=/layers/google.python.pip/pip/lib/python3.11/site-packages
+ALLOWED_ORIGINS=[OPTIONAL_ADDITIONAL_DOMAINS]
 PORT=8080
 ```
 
@@ -167,7 +175,7 @@ NEXT_PUBLIC_API_URL=[YOUR_CLOUD_RUN_URL]
      --time-zone="America/Los_Angeles" \
      --uri="[YOUR_CLOUD_RUN_URL]/admin/rotate" \
      --http-method=POST \
-     --headers="Content-Type=application/json,Content-Length=0" \
+     --headers="Content-Type=application/json,Content-Length=0,X-Admin-Key=[YOUR_ADMIN_SECRET]" \
      --max-retry-attempts=3 \
      --max-retry-duration=300s
    ```
@@ -200,7 +208,7 @@ gcloud scheduler jobs resume daily-puzzle-generation --location=us-central1
 
 2. **Generate first puzzle:**
    ```bash
-   curl -X POST -H "Content-Length: 0" [YOUR_CLOUD_RUN_URL]/admin/rotate
+   curl -X POST -H "Content-Length: 0" -H "X-Admin-Key: [YOUR_ADMIN_SECRET]" [YOUR_CLOUD_RUN_URL]/admin/rotate
    ```
 
 3. **Verify automated scheduling:**

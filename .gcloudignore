@@ -1,0 +1,42 @@
+# Ignore files for Google Cloud Build
+.git
+.gitignore
+README.md
+CLAUDE.md
+DEPLOYMENT.md
+*.md
+
+# Frontend (not needed for API builds)
+apps/web/
+
+# Development files
+.venv/
+venv/
+.env
+.env.*
+*.log
+
+# IDE and OS
+.DS_Store
+.vscode/
+*.pem
+.vercel
+
+# Node modules (if any)
+node_modules/
+.npm
+
+# Python cache
+__pycache__/
+*.pyc
+*.py[cod]
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Testing
+coverage/
+.coverage
+.pytest_cache/

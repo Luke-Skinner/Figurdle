@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Cookie, Response
+from fastapi import FastAPI, HTTPException, Request, Cookie, Response, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from .db import Base, engine, SessionLocal
 from .models import Puzzle, UserSession
@@ -26,8 +26,13 @@ allowed_origins = [
     "http://127.0.0.1:3003",
 ]
 
-# Vercel Domain
-if settings.ENVIRONMENT == "production":
+# Check for environment variable override first
+if settings.ALLOWED_ORIGINS:
+    # Split comma-separated origins and add to allowed_origins
+    env_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+    allowed_origins.extend(env_origins)
+    logger.info(f"Added {len(env_origins)} origins from ALLOWED_ORIGINS env var")
+elif settings.ENVIRONMENT == "production":
     allowed_origins.extend([
         "https://figurdle.com",
         "https://www.figurdle.com",
@@ -55,6 +60,12 @@ def sign(payload: dict) -> str:
     msg = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
     return hmac.new(settings.PUZZLE_SIGNING_SECRET.encode(), msg, hashlib.sha256).hexdigest()
 
+def verify_admin_key(admin_key: str = Header(None, alias="X-Admin-Key")):
+    """Verify admin authentication key"""
+    if not admin_key or admin_key != settings.ADMIN_SECRET_KEY:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid admin key")
+    return admin_key
+
 @app.get("/healthz")
 def health():
     return {"ok": True}
@@ -74,7 +85,7 @@ def debug_cors():
     }
 
 @app.get("/admin/status")
-def generation_status():
+def generation_status(admin_key: str = Depends(verify_admin_key)):
     """Check if today's puzzle exists and when it was created."""
     with SessionLocal() as db:
         p = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).one_or_none()
@@ -93,7 +104,7 @@ def generation_status():
         }
 
 @app.post("/admin/rotate")
-def rotate():
+def rotate(admin_key: str = Depends(verify_admin_key)):
     """Generate today's puzzle using AI character generation."""
     with SessionLocal() as db:
         # Check if today's puzzle already exists

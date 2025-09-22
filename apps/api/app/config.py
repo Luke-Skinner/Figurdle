@@ -17,7 +17,13 @@ class Settings(BaseSettings):
     # Environment detection
     ENVIRONMENT: str = "development"
     PORT: int = 8080
-    
+
+    # CORS configuration override
+    ALLOWED_ORIGINS: str = ""
+
+    # Admin authentication
+    ADMIN_SECRET_KEY: str = "change-me-admin-secret"
+
     # AI-driven duplicate prevention settings
     DUPLICATE_PREVENTION_DAYS: int = 90  # Avoid duplicates from last N days
     FALLBACK_DUPLICATE_DAYS: int = 30    # In fallback, only avoid last N days  

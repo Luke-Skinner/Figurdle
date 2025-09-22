@@ -49,6 +49,7 @@ FastAPI backend for the daily historical character guessing game.
    # Create .env file
    OPENAI_API_KEY=your_openai_api_key_here
    PUZZLE_SIGNING_SECRET=your_secret_key_here
+   ADMIN_SECRET_KEY=your_admin_secret_here
    DATABASE_URL=sqlite:///./dev.sqlite3  # For development
    ```
 
@@ -76,7 +77,7 @@ FastAPI backend for the daily historical character guessing game.
 - `POST /session/complete` - Mark session as completed (won/lost)
 - `POST /session/update-progress` - Update session progress (attempts/hints)
 
-### Admin Endpoints
+### Admin Endpoints (Requires X-Admin-Key header)
 
 - `GET /admin/status` - Check if today's puzzle exists and view creation details
 - `POST /admin/rotate` - Generate new daily puzzle (manual trigger)
@@ -183,8 +184,8 @@ alembic downgrade -1
 # Test health endpoint
 curl http://localhost:8080/health
 
-# Test puzzle generation (requires OpenAI API key)
-curl -X POST http://localhost:8080/admin/rotate
+# Test puzzle generation (requires admin authentication)
+curl -X POST -H "Content-Length: 0" -H "X-Admin-Key: your-admin-secret" http://localhost:8080/admin/rotate
 ```
 
 ## Configuration
@@ -194,11 +195,14 @@ All configuration is handled through environment variables via Pydantic Settings
 - `DATABASE_URL`: Database connection string
 - `OPENAI_API_KEY`: OpenAI API key for character generation
 - `PUZZLE_SIGNING_SECRET`: Secret for HMAC signatures
+- `ADMIN_SECRET_KEY`: Secret for admin endpoint authentication
 - `ENVIRONMENT`: Set to 'production' for Cloud SQL
 - `INSTANCE_CONNECTION_NAME`: Cloud SQL instance (production only)
+- `ALLOWED_ORIGINS`: Additional CORS origins (optional)
 
 ## Security
 
+- **Admin Authentication**: Protected admin endpoints with X-Admin-Key header validation
 - **HMAC Signatures**: All puzzle requests require valid signatures
 - **CORS Configuration**: Restricts origins based on environment
 - **Environment Isolation**: Separate configs for development/production

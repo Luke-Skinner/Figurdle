@@ -4,6 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 interface PuzzleInfoProps {
   puzzleDate: string;
   attempts: number;
+  maxAttempts: number;
   sessionStatus: SessionStatus | null;
   className?: string;
 }
@@ -11,6 +12,7 @@ interface PuzzleInfoProps {
 export default function PuzzleInfo({
   puzzleDate,
   attempts,
+  maxAttempts,
   sessionStatus,
   className = ""
 }: PuzzleInfoProps) {
@@ -61,7 +63,7 @@ export default function PuzzleInfo({
           </div>
           <div className={`text-2xl font-bold mt-1
             ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
-            {attempts}
+            {attempts}/{maxAttempts}
           </div>
         </div>
       </div>

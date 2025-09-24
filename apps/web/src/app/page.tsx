@@ -291,6 +291,7 @@ export default function Home() {
                 <PuzzleInfo
                   puzzleDate={puzzle.puzzle_date}
                   attempts={attemptCount}
+                  maxAttempts={puzzle.hints_count + 1}
                   sessionStatus={sessionStatus}
                 />
               )}

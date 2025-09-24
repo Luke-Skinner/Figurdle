@@ -1,6 +1,6 @@
 # Figurdle
 
-A daily historical character guessing game inspired by the -dle type games. Play now at Figurdle.com!
+A daily famous figure guessing game inspired by the -dle type games. Play now at Figurdle.com!
 
 ## Quick Start
 
@@ -81,7 +81,7 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **AI-Generated Characters**: Daily famous figures created with OpenAI GPT-4o-mini
 - **No Character Repeats**: Complete duplicate prevention system ensures every puzzle is unique
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
-- **Progressive Hints**: Get hints one by one as you make incorrect guesses
+- **Progressive Hints**: Get hints one by one as you make incorrect guesses with attempt tracking (1/8, 2/8, etc.)
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day per user
 - **Dark/Light Mode**: Complete theme system with user preference persistence
 - **Secure Validation**: HMAC signature verification for API integrity and admin endpoint authentication

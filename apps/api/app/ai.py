@@ -335,18 +335,22 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         "\nCRITICAL RULES FOR HINTS:",
         "- NEVER mention the person's name, nickname, or any part of their name in any hint",
         "- NEVER mention titles that directly contain their name (e.g., don't say 'Napoleonic Wars' for Napoleon)",
-        "- Use pronouns (I, they, this person) instead of names",
+        "- ALWAYS write hints in THIRD PERSON ONLY - use 'they', 'this person', 'this figure', etc.",
+        "- NEVER use first person ('I', 'my', 'me') - always maintain third person perspective",
         "- Refer to places, events, or concepts without using the person's name",
         "- Make hints progressively more specific but always avoid name reveals",
         "- Hint 7 should be very specific but still require the player to make the connection",
-        "\nGOOD HINT EXAMPLES:",
-        "- 'I rose to power during a time of revolution' (not 'Napoleon rose to power...')",
-        "- 'This military leader conquered much of Europe' (not 'The Napoleonic conquests...')",
-        "- 'I was exiled to a remote island' (not 'Napoleon was exiled...')",
+        "\nGOOD HINT EXAMPLES (THIRD PERSON ONLY):",
+        "- 'This military leader rose to power during a time of revolution'",
+        "- 'They conquered much of Europe in the early 19th century'",
+        "- 'This figure was exiled to a remote island after their defeat'",
+        "- 'They revolutionized the understanding of space and time'",
+        "- 'This person wrote a famous theory that changed physics forever'",
         "\nBAD HINT EXAMPLES (NEVER DO THIS):",
-        "- 'I am known as Napoleon'",
-        "- 'The Napoleonic era was named after me'",
-        "- 'My name appears in the term Napoleonic Wars'"
+        "- 'I rose to power...' (first person - forbidden)",
+        "- 'My theory changed physics...' (first person - forbidden)",
+        "- 'I am known as Napoleon' (contains name)",
+        "- 'The Napoleonic era was named after me' (contains name derivative)"
     ]
     
     system_prompt = '\n'.join(system_prompt_parts)

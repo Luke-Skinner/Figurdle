@@ -350,7 +350,25 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         "- 'I rose to power...' (first person - forbidden)",
         "- 'My theory changed physics...' (first person - forbidden)",
         "- 'I am known as Napoleon' (contains name)",
-        "- 'The Napoleonic era was named after me' (contains name derivative)"
+        "- 'The Napoleonic era was named after me' (contains name derivative)",
+        "\nCRITICAL RULES FOR ALIASES:",
+        "- Aliases must be SPECIFIC NAMES people actually use to refer to this exact person",
+        "- Include nicknames, shortened names, stage names, pen names, titles with their name",
+        "- NEVER use broad descriptive terms like 'artist', 'scientist', 'cultural icon', 'inventor'",
+        "- NEVER use job titles like 'president', 'actor', 'writer', 'musician'",
+        "- NEVER use generic descriptors like 'genius', 'legend', 'pioneer', 'master'",
+        "\nGOOD ALIAS EXAMPLES:",
+        "- 'Einstein' (for Albert Einstein)",
+        "- 'The King of Pop' (for Michael Jackson)",
+        "- 'Honest Abe' (for Abraham Lincoln)",
+        "- 'The Iron Lady' (for Margaret Thatcher)",
+        "- 'Elvis' (for Elvis Presley)",
+        "\nBAD ALIAS EXAMPLES (NEVER USE):",
+        "- 'artist' (too broad)",
+        "- 'cultural icon' (too broad)",
+        "- 'scientist' (too broad)",
+        "- 'musician' (too broad)",
+        "- 'inventor' (too broad)"
     ]
     
     system_prompt = '\n'.join(system_prompt_parts)

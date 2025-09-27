@@ -1,6 +1,6 @@
 # Production dependencies for Figurdle API
-fastapi==0.117.1
-starlette==0.48.0
+fastapi==0.115.6
+starlette==0.41.3
 uvicorn==0.32.1
 uvicorn[standard]==0.32.1
 hypercorn==0.14.4
@@ -8,7 +8,7 @@ sqlalchemy==2.0.23
 alembic==1.16.5
 psycopg2-binary==2.9.9
 cloud-sql-python-connector==1.4.3
-pydantic==2.10.7
-pydantic-settings==2.7.0
-pytz==2025.5
+pydantic==2.11.9
+pydantic-settings==2.7.4
+pytz==2024.2
 openai>=1.105.0

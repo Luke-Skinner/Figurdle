@@ -53,6 +53,16 @@ export default function Home() {
 
           // Set revealed hints from puzzle response
           setHints(p.revealed_hints || []);
+
+          // Create a result object with the answer for display
+          if (p.answer) {
+            setResult({
+              correct: session.result === 'won',
+              reveal_next_hint: false,
+              next_hint: null,
+              normalized_answer: p.answer
+            });
+          }
         } else if (session.can_play && session.has_played) {
           // User is mid-game - restore their progress
           setRevealedCount(session.hints_revealed || 0);
@@ -194,12 +204,12 @@ export default function Home() {
     return (
       <div className={`min-h-screen flex items-center justify-center
         ${isDark
-          ? 'bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900'
-          : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
+          ? 'bg-gradient-to-br from-gray-900 via-amber-900 to-yellow-900'
+          : 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50'
         }`}>
         <div className="text-center space-y-4">
           <div className={`animate-spin rounded-full h-12 w-12 border-4 border-t-transparent mx-auto
-            ${isDark ? 'border-blue-400' : 'border-blue-600'}`}></div>
+            ${isDark ? 'border-amber-400' : 'border-amber-600'}`}></div>
           <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             Loading today&apos;s puzzle...
           </p>
@@ -325,6 +335,7 @@ export default function Home() {
                 hints={hints}
                 revealedCount={revealedCount}
                 attempts={attemptCount}
+                puzzle={puzzle}
               />
 
               {/* Error Display */}

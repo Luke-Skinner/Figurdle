@@ -3,6 +3,7 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080";
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
+    credentials: 'include',
     ...init,
   });
   if (!res.ok) {
@@ -17,6 +18,7 @@ export type PublicPuzzle = {
   hints_count: number;
   signature: string;
   revealed_hints?: string[];
+  answer?: string;
 };
 
 export type GuessIn = { 

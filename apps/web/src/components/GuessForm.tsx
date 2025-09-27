@@ -92,8 +92,8 @@ export default function GuessForm({
                   ? 'border-gray-600 bg-gray-700/50 text-gray-500 cursor-not-allowed'
                   : 'border-gray-200 bg-gray-50/50 text-gray-400 cursor-not-allowed'
                 : isDark
-                  ? 'border-gray-600 focus:border-blue-400 bg-gray-700/50 text-gray-100 hover:border-gray-500 focus:ring-blue-400/20'
-                  : 'border-gray-300 focus:border-blue-500 bg-white/50 text-gray-900 hover:border-gray-400 focus:ring-blue-500/20'
+                  ? 'border-gray-600 focus:border-amber-400 bg-gray-700/50 text-gray-100 hover:border-gray-500 focus:ring-amber-400/20'
+                  : 'border-gray-300 focus:border-amber-500 bg-white/50 text-gray-900 hover:border-gray-400 focus:ring-amber-500/20'
               }
               ${loading ? 'animate-pulse' : ''}
             `}
@@ -104,7 +104,7 @@ export default function GuessForm({
           {/* Loading Spinner */}
           {loading && (
             <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-2 border-amber-600 border-t-transparent"></div>
             </div>
           )}
         </div>
@@ -117,7 +117,7 @@ export default function GuessForm({
             transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
             ${disabled || !guess.trim() || loading || isVictorious || isGameOver
               ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
-              : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl focus:ring-blue-500/30'
+              : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white shadow-lg hover:shadow-xl focus:ring-amber-500/30'
             }
           `}
         >
@@ -139,7 +139,7 @@ export default function GuessForm({
         {!disabled && !isVictorious && !isGameOver && (
           <div className="text-center">
             <p className="text-sm text-gray-500">
-              Try full names, nicknames, or different variations
+              Try full name of figures
             </p>
           </div>
         )}

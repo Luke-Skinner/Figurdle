@@ -8,7 +8,9 @@ FastAPI backend for the daily historical character guessing game.
 - **Complete No-Repeats System**: UsedCharacter model ensures no duplicate puzzles ever
 - **Daily Play Restriction**: Cookie-based session management enforces one play per day per user
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
-- **Progressive Hint System**: Reveals hints one by one as players make incorrect guesses
+- **Progressive Hint System**: 5 hints maximum revealed as players make incorrect guesses (reduced difficulty)
+- **Advanced Fuzzy Matching**: Typo tolerance using Levenshtein distance algorithm for answer validation
+- **Answer Persistence**: Game completion state and answers persist across browser sessions
 - **Session Management**: Comprehensive user session tracking with progress persistence
 - **Secure Validation**: HMAC signature verification for API requests
 - **Resilient Error Handling**: Graceful fallbacks for development environment issues
@@ -27,7 +29,7 @@ FastAPI backend for the daily historical character guessing game.
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (3.13 supported)
 - PostgreSQL (for production setup)
 - OpenAI API key
 
@@ -110,7 +112,7 @@ FastAPI backend for the daily historical character guessing game.
   "exists": true,
   "character": "Leonardo da Vinci",
   "created_at": "2025-09-14T08:09:00Z",
-  "hints_count": 7
+  "hints_count": 5
 }
 ```
 

@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class PublicPuzzle(BaseModel):
     puzzle_date: str
     hints_count: int
     signature: str
     revealed_hints: List[str] = []
+    answer: Optional[str] = None
 
 class GuessIn(BaseModel):
     guess: str
@@ -17,5 +18,5 @@ class GuessIn(BaseModel):
 class GuessOut(BaseModel):
     correct: bool
     reveal_next_hint: bool
-    next_hint: str | None
-    normalized_answer: str | None
+    next_hint: Optional[str]
+    normalized_answer: Optional[str]

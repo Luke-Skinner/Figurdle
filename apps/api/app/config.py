@@ -29,8 +29,7 @@ class Settings(BaseSettings):
     FALLBACK_DUPLICATE_DAYS: int = 30    # In fallback, only avoid last N days  
     OBSCURITY_THRESHOLD: int = 6         # Minimum familiarity score (1-10)
     
-    class Config:
-        env_file = ".env"
+    model_config = {"env_file": ".env"}
     
     def get_database_url(self) -> str:
         """Get database URL based on environment"""

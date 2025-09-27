@@ -24,8 +24,8 @@ export default function GameHeader({ className = "" }: GameHeaderProps) {
           <h1 className={`text-4xl md:text-5xl font-bold bg-gradient-to-r bg-clip-text text-transparent
             leading-tight pb-2
             ${isDark
-              ? 'from-blue-400 via-purple-400 to-cyan-400'
-              : 'from-blue-600 via-purple-600 to-blue-800'
+              ? 'from-amber-400 via-amber-600 to-amber-800'
+              : 'from-amber-900 via-amber-700 to-amber-500'
             }`}>
             Figurdle
           </h1>
@@ -39,8 +39,8 @@ export default function GameHeader({ className = "" }: GameHeaderProps) {
           className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full
                      transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2
                      ${isDark
-                       ? 'text-blue-400 bg-blue-900/30 hover:bg-blue-800/40 focus:ring-blue-400 focus:ring-offset-gray-900'
-                       : 'text-blue-600 bg-blue-50 hover:bg-blue-100 focus:ring-blue-500 focus:ring-offset-white'
+                       ? 'text-amber-400 bg-amber-900/30 hover:bg-amber-800/40 focus:ring-amber-400 focus:ring-offset-gray-900'
+                       : 'text-amber-600 bg-amber-50 hover:bg-amber-100 focus:ring-amber-500 focus:ring-offset-white'
                      }`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

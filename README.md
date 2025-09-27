@@ -7,7 +7,7 @@ A daily famous figure guessing game inspired by the -dle type games. Play now at
 ### Local Development
 
 **Prerequisites:**
-- Python 3.11+
+- Python 3.11+ (3.13 supported)
 - Node.js 18+
 - OpenAI API key
 
@@ -81,12 +81,16 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **AI-Generated Characters**: Daily famous figures created with OpenAI GPT-4o-mini
 - **No Character Repeats**: Complete duplicate prevention system ensures every puzzle is unique
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
-- **Progressive Hints**: Get hints one by one as you make incorrect guesses with attempt tracking (1/8, 2/8, etc.)
+- **Progressive Hints**: 5 hints maximum revealed as you make incorrect guesses (reduced difficulty)
+- **Smart Attempt Tracking**: 6 attempts maximum with fraction display (1/6, 2/6, etc.)
+- **Advanced Fuzzy Matching**: Typo tolerance using Levenshtein distance algorithm - handles common misspellings
+- **Answer Persistence**: Game completion state and answers persist across browser sessions
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day per user
-- **Dark/Light Mode**: Complete theme system with user preference persistence
+- **Amber Theme**: Elegant amber/brown color scheme with full dark/light mode support
 - **Secure Validation**: HMAC signature verification for API integrity and admin endpoint authentication
 - **Resilient Error Handling**: Fallbacks for development environment issues
-- **Modern Component Architecture**: Modular React components with Tailwind CSS
+- **Modern Component Architecture**: Modular React components with Tailwind CSS and theme adaptation
 - **Integrated Feedback System**: Streamlined user feedback within the hints area
 - **Custom Backgrounds**: Theme-specific PNG background support
+- **Timezone Accuracy**: Fixed date display issues across different timezones
 - **CI/CD Pipeline**: Automated deployment via Google Cloud Run with repository integration

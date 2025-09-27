@@ -66,6 +66,101 @@ def verify_admin_key(admin_key: str = Header(None, alias="X-Admin-Key")):
         raise HTTPException(status_code=401, detail="Unauthorized: Invalid admin key")
     return admin_key
 
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """Calculate Levenshtein distance between two strings"""
+    if len(s1) < len(s2):
+        return levenshtein_distance(s2, s1)
+
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = list(range(len(s2) + 1))
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return previous_row[-1]
+
+def is_fuzzy_match(guess: str, target: str, max_distance: int = None) -> bool:
+    """Check if guess is close enough to target to be considered a match"""
+    if guess == target:
+        return True
+
+    # Don't allow very short guesses to match long targets
+    if len(guess) < 3 and len(target) > 6:
+        return False
+
+    # Calculate adaptive threshold based on word length
+    if max_distance is None:
+        word_len = len(target)
+        if word_len <= 4:
+            max_distance = 1  # Very short names: 1 typo max
+        elif word_len <= 8:
+            max_distance = 2  # Medium names: 2 typos max
+        else:
+            max_distance = 3  # Long names: 3 typos max
+
+    distance = levenshtein_distance(guess, target)
+
+    # Additional similarity check: ensure reasonable similarity
+    max_len = max(len(guess), len(target))
+    similarity_ratio = 1 - (distance / max_len)
+
+    # More lenient similarity threshold for reasonable partial matches
+    min_similarity = 0.4 if max_len > 8 else 0.5
+
+    return distance <= max_distance and similarity_ratio >= min_similarity
+
+def normalize_for_matching(text: str) -> str:
+    """Normalize text for better fuzzy matching by handling common variations"""
+    text = text.strip().lower()
+    # Remove common punctuation that might be missed
+    text = text.replace(".", "").replace(",", "").replace("'", "").replace("-", " ")
+    # Normalize whitespace
+    text = " ".join(text.split())
+    return text
+
+def find_fuzzy_match(guess: str, possible_answers: list) -> tuple[bool, str]:
+    """Find if guess matches any of the possible answers within typo tolerance"""
+    guess_norm = normalize_for_matching(guess)
+
+    for answer in possible_answers:
+        answer_norm = normalize_for_matching(answer)
+
+        # Try exact match first (after normalization)
+        if guess_norm == answer_norm:
+            return True, answer
+
+        # Try fuzzy match
+        if is_fuzzy_match(guess_norm, answer_norm):
+            return True, answer
+
+        # Try matching individual words for multi-word names
+        guess_words = guess_norm.split()
+        answer_words = answer_norm.split()
+
+        # If both have multiple words, try matching with word order flexibility
+        if len(guess_words) > 1 and len(answer_words) > 1:
+            # Check if all guess words fuzzy match to some answer word
+            matched_words = 0
+            for guess_word in guess_words:
+                for answer_word in answer_words:
+                    if is_fuzzy_match(guess_word, answer_word):
+                        matched_words += 1
+                        break
+
+            # Allow match if most words match (at least 2/3 for longer names)
+            required_matches = max(1, len(guess_words) - 1) if len(guess_words) <= 3 else len(guess_words) * 2 // 3
+            if matched_words >= required_matches:
+                return True, answer
+
+    return False, ""
+
 @app.get("/healthz")
 def health():
     return {"ok": True}
@@ -192,6 +287,7 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
 
         # Check if user has a session to determine what hints to include
         revealed_hints = []
+        answer = None
         if figurdle_session:
             session_record = db.query(UserSession).filter(
                 UserSession.session_id == figurdle_session,
@@ -204,17 +300,23 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
                 revealed_hints = p.hints[:hints_count]
                 logger.info(f"Returning {len(revealed_hints)} revealed hints for session {figurdle_session[:8]}...")
 
+            # Include answer if session is completed
+            if session_record and session_record.completed:
+                answer = p.answer
+                logger.info(f"Including answer for completed session {figurdle_session[:8]}...")
+
         # Create signature payload (without revealed_hints for compatibility)
         signature_payload = {
             "puzzle_date": str(p.puzzle_date),
             "hints_count": len(p.hints)
         }
 
-        # Create response payload (with revealed_hints)
+        # Create response payload (with revealed_hints and answer)
         response_payload = {
             "puzzle_date": str(p.puzzle_date),
             "hints_count": len(p.hints),
             "revealed_hints": revealed_hints,
+            "answer": answer,
             "signature": sign(signature_payload)
         }
 
@@ -240,14 +342,22 @@ def post_guess(g: GuessIn, request: Request):
     with SessionLocal() as db:
         p = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).one()
         norm = g.guess.strip().lower()
-        answers = [p.answer.lower()] + [a.lower() for a in p.aliases]
+        answers = [p.answer] + p.aliases  # Keep original case for matching
 
         logger.info(f"Processing guess: '{g.guess}' (normalized: '{norm}')")
         logger.info(f"Checking against {len(answers)} possible answers")
         logger.info(f"Revealed count from frontend: {g.revealed}, Total hints available: {len(p.hints)}")
 
-        if norm in answers:
-            logger.info("Guess is correct - returning victory response")
+        # First try exact match (case-insensitive)
+        if norm in [a.lower() for a in answers]:
+            logger.info("Exact match found - returning victory response")
+            return GuessOut(correct=True, reveal_next_hint=False, next_hint=None, normalized_answer=p.answer)
+
+        # Try fuzzy matching if exact match fails (allows minor typos)
+        is_match, matched_answer = find_fuzzy_match(g.guess, answers)
+        if is_match:
+            distance = levenshtein_distance(norm, normalize_for_matching(matched_answer))
+            logger.info(f"Fuzzy match found: '{g.guess}' matches '{matched_answer}' (distance: {distance})")
             return GuessOut(correct=True, reveal_next_hint=False, next_hint=None, normalized_answer=p.answer)
 
         if g.revealed < len(p.hints):

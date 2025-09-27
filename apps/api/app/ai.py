@@ -279,7 +279,7 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     Returns a dictionary with:
     - answer: The main name of the character (e.g., "Albert Einstein", "Taylor Swift")
     - aliases: List of alternative names (e.g., ["Einstein", "Albert", "Tay-Tay"])
-    - hints: List of 7 progressive hints from vague to specific
+    - hints: List of 5 progressive hints from vague to specific
     - source_urls: List of relevant Wikipedia/reference URLs
 
     Raises CharacterGenerationError if generation fails.
@@ -309,12 +309,10 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
   "aliases": ["Alternative Name 1", "Nickname", "Title"],
   "hints": [
     "Hint 1: Very broad historical context",
-    "Hint 2: Time period or geographical region", 
+    "Hint 2: Time period or geographical region",
     "Hint 3: Field of expertise or major role",
     "Hint 4: Specific major accomplishment",
-    "Hint 5: More specific detail or turning point",
-    "Hint 6: Very specific fact or famous quote/event",
-    "Hint 7: Nearly gives it away but requires connecting the dots"
+    "Hint 5: Nearly gives it away but requires connecting the dots"
   ],
   "source_urls": ["https://en.wikipedia.org/wiki/Character_Name"]
 }'''
@@ -416,8 +414,8 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         if not isinstance(character_data["aliases"], list):
             raise CharacterGenerationError("Aliases must be a list")
             
-        if not isinstance(character_data["hints"], list) or len(character_data["hints"]) != 7:
-            raise CharacterGenerationError("Must provide exactly 7 hints")
+        if not isinstance(character_data["hints"], list) or len(character_data["hints"]) != 5:
+            raise CharacterGenerationError("Must provide exactly 5 hints")
             
         if not isinstance(character_data["source_urls"], list):
             raise CharacterGenerationError("Source URLs must be a list")

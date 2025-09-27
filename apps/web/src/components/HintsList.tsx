@@ -41,13 +41,13 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
       {/* Header */}
       <div className={`bg-gradient-to-r px-6 py-4 border-b
         ${isDark
-          ? 'from-blue-900/50 to-indigo-900/50 border-gray-700'
-          : 'from-blue-50 to-indigo-50 border-gray-200'
+          ? 'from-amber-900/50 to-yellow-900/50 border-gray-700'
+          : 'from-amber-50 to-yellow-50 border-gray-200'
         }`}>
         <div className="flex items-center justify-between">
           <h3 className={`text-lg font-semibold flex items-center gap-2
             ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            <svg className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`}
+            <svg className={`w-5 h-5 ${isDark ? 'text-amber-400' : 'text-amber-600'}`}
                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -56,8 +56,8 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
           </h3>
           <span className={`text-sm font-medium px-3 py-1 rounded-full
             ${isDark
-              ? 'bg-blue-900/50 text-blue-300'
-              : 'bg-blue-100 text-blue-800'
+              ? 'bg-amber-900/50 text-amber-300'
+              : 'bg-amber-100 text-amber-800'
             }`}>
             {hints.length} hint{hints.length !== 1 ? 's' : ''}
           </span>
@@ -81,13 +81,13 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
               <div className={`flex items-start gap-4 p-4 bg-gradient-to-r rounded-xl border
                             hover:shadow-md transition-shadow duration-200
                             ${isDark
-                              ? 'from-gray-700/50 to-blue-800/50 border-gray-600'
-                              : 'from-gray-50 to-blue-50 border-gray-200'
+                              ? 'from-gray-700/50 to-amber-800/50 border-gray-600'
+                              : 'from-gray-50 to-amber-50 border-gray-200'
                             }`}>
                 {/* Hint Number */}
                 <div className={`flex-shrink-0 w-8 h-8 text-white rounded-full
                               flex items-center justify-center text-sm font-bold
-                              ${isDark ? 'bg-blue-500' : 'bg-blue-600'}`}>
+                              ${isDark ? 'bg-amber-500' : 'bg-amber-600'}`}>
                   {index + 1}
                 </div>
 
@@ -101,7 +101,7 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
 
                 {/* Decorative Element */}
                 <div className="flex-shrink-0">
-                  <svg className={`w-5 h-5 ${isDark ? 'text-blue-300' : 'text-blue-400'}`}
+                  <svg className={`w-5 h-5 ${isDark ? 'text-amber-300' : 'text-amber-400'}`}
                        fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                   </svg>

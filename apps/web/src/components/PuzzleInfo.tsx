@@ -33,7 +33,7 @@ export default function PuzzleInfo({
           </div>
           <div className={`text-xl font-bold mt-1
             ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            {new Date(puzzleDate).toLocaleDateString('en-US', {
+            {new Date(puzzleDate + 'T12:00:00').toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
               year: 'numeric'
@@ -45,11 +45,11 @@ export default function PuzzleInfo({
         <div className="flex justify-center">
           <div className={`w-16 h-16 rounded-full flex items-center justify-center
             ${isDark
-              ? 'bg-blue-900/30 border-2 border-blue-700/50'
-              : 'bg-blue-50 border-2 border-blue-200'
+              ? 'bg-amber-900/30 border-2 border-amber-700/50'
+              : 'bg-amber-50 border-2 border-amber-200'
             }`}>
             <span className={`text-3xl font-bold
-              ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+              ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
               ?
             </span>
           </div>
@@ -62,7 +62,7 @@ export default function PuzzleInfo({
             Attempts
           </div>
           <div className={`text-2xl font-bold mt-1
-            ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>
+            ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
             {attempts}/{maxAttempts}
           </div>
         </div>

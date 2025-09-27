@@ -43,7 +43,7 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
             <button
               onClick={onClose}
               className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100
-                       transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -82,9 +82,9 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
               </ul>
             </div>
 
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-              <h4 className="font-semibold text-blue-900 mb-2">Daily Challenge</h4>
-              <p className="text-blue-800 text-sm">
+            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+              <h4 className="font-semibold text-amber-900 mb-2">Daily Challenge</h4>
+              <p className="text-amber-800 text-sm">
                 Each puzzle is designed to be challenging but fair. Come back every day
                 for a new figure to discover.
               </p>
@@ -95,8 +95,8 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
           <div className="pt-4 border-t border-gray-200">
             <button
               onClick={onClose}
-              className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-xl
-                       hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500
+              className="w-full px-4 py-3 bg-amber-600 text-white font-medium rounded-xl
+                       hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500
                        transition-colors duration-200"
             >
               Just yapping...(sybau)

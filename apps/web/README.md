@@ -26,13 +26,17 @@ Make sure your FastAPI backend is running on port 8080 for local development, or
 - **Complete No-Repeats System**: Database tracking ensures no character appears twice
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day
 - **Automated Daily Updates**: New puzzles automatically generated at 12:01 AM PST
-- **Progressive Hint System**: Get hints one by one as you make incorrect guesses
-- **Dark/Light Mode**: Complete theme system with localStorage persistence
+- **Progressive Hint System**: 5 hints maximum revealed as you make incorrect guesses (reduced difficulty)
+- **Smart Attempt Tracking**: 6 attempts maximum with fraction display (1/6, 2/6, etc.)
+- **Advanced Fuzzy Matching**: Typo tolerance handles common misspellings automatically
+- **Answer Persistence**: Game completion state and answers persist across browser sessions
+- **Amber Theme**: Elegant amber/brown color scheme with full dark/light mode support
+- **Timezone Accuracy**: Fixed date display issues across different timezones
 - **Custom Backgrounds**: Theme-specific PNG background support
-- **Component Architecture**: Modular React components for maintainability
+- **Component Architecture**: Modular React components with theme adaptation
 - **Integrated Feedback**: Streamlined feedback within hints area
 - **Resilient Error Handling**: Graceful fallbacks for development issues
-- **Clean, Responsive UI**: Built with advanced Tailwind CSS for all screen sizes
+- **Clean, Responsive UI**: Built with Tailwind CSS and comprehensive theme system for all screen sizes
 - **Real-time Validation**: Instant feedback on guesses with HMAC security
 
 ## Tech Stack

@@ -95,6 +95,20 @@ export default function GameOverMessage({
               }`}>
               {result?.normalized_answer || puzzle?.answer}
             </div>
+            <div className="mt-4">
+              <img
+                src={puzzle?.image_url || 'https://via.placeholder.com/400x400.png?text=No+Image+Available'}
+                alt={result?.normalized_answer || puzzle?.answer || 'Character'}
+                className="mx-auto rounded-lg shadow-lg max-w-xs w-full object-cover"
+                onError={(e) => {
+                  // Fallback to placeholder if image fails to load
+                  const img = e.target as HTMLImageElement;
+                  if (img.src !== 'https://via.placeholder.com/400x400.png?text=No+Image+Available') {
+                    img.src = 'https://via.placeholder.com/400x400.png?text=No+Image+Available';
+                  }
+                }}
+              />
+            </div>
           </div>
 
           {/* Performance Stats */}
@@ -212,6 +226,20 @@ export default function GameOverMessage({
                   : 'from-orange-600 to-red-600'
                 }`}>
                 {result?.normalized_answer || puzzle?.answer}
+              </div>
+              <div className="mt-4">
+                <img
+                  src={puzzle?.image_url || 'https://via.placeholder.com/400x400.png?text=No+Image+Available'}
+                  alt={result?.normalized_answer || puzzle?.answer || 'Character'}
+                  className="mx-auto rounded-lg shadow-lg max-w-xs w-full object-cover"
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const img = e.target as HTMLImageElement;
+                    if (img.src !== 'https://via.placeholder.com/400x400.png?text=No+Image+Available') {
+                      img.src = 'https://via.placeholder.com/400x400.png?text=No+Image+Available';
+                    }
+                  }}
+                />
               </div>
             </div>
           )}

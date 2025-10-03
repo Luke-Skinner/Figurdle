@@ -19,6 +19,7 @@ export type PublicPuzzle = {
   signature: string;
   revealed_hints?: string[];
   answer?: string;
+  image_url?: string;
 };
 
 export type GuessIn = { 

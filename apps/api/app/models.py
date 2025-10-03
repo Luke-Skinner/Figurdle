@@ -17,6 +17,7 @@ class Puzzle(Base):
     aliases = Column(JSONType, nullable=False)      # list[str]
     hints = Column(JSONType, nullable=False)        # list[str]
     source_urls = Column(JSONType, nullable=False)  # list[str]
+    image_url = Column(Text, nullable=True)         # Wikipedia or AI-sourced image
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 class UserSession(Base):

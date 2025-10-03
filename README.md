@@ -7,7 +7,7 @@ A daily famous figure guessing game inspired by the -dle type games. Play now at
 ### Local Development
 
 **Prerequisites:**
-- Python 3.11+ (3.13 supported)
+- Python 3.11+
 - Node.js 18+
 - OpenAI API key
 

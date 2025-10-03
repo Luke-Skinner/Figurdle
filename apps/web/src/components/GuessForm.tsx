@@ -4,6 +4,7 @@ import { useTheme } from "../contexts/ThemeContext";
 
 interface GuessFormProps {
   onSubmit: (guess: string) => void;
+  onSkip?: () => void;
   disabled: boolean;
   loading: boolean;
   isVictorious: boolean;
@@ -14,6 +15,7 @@ interface GuessFormProps {
 
 export default function GuessForm({
   onSubmit,
+  onSkip,
   disabled,
   loading,
   isVictorious,
@@ -109,31 +111,62 @@ export default function GuessForm({
           )}
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          disabled={!guess.trim() || disabled || loading || isVictorious || isGameOver}
-          className={`w-full py-4 px-6 rounded-xl font-medium text-lg transition-all duration-200
-            transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
-            ${disabled || !guess.trim() || loading || isVictorious || isGameOver
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
-              : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white shadow-lg hover:shadow-xl focus:ring-amber-500/30'
-            }
-          `}
-        >
-          <div className="flex items-center justify-center gap-2">
-            {loading && (
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-            )}
-            <span>{getButtonText()}</span>
-            {!loading && !disabled && !isVictorious && !isGameOver && (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            )}
-          </div>
-        </button>
+        {/* Submit and Skip Buttons */}
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={!guess.trim() || disabled || loading || isVictorious || isGameOver}
+            className={`flex-1 py-4 px-6 rounded-xl font-medium text-lg transition-all duration-200
+              transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
+              ${disabled || !guess.trim() || loading || isVictorious || isGameOver
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
+                : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white shadow-lg hover:shadow-xl focus:ring-amber-500/30'
+              }
+            `}
+          >
+            <div className="flex items-center justify-center gap-2">
+              {loading && (
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+              )}
+              <span>{getButtonText()}</span>
+              {!loading && !disabled && !isVictorious && !isGameOver && (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              )}
+            </div>
+          </button>
+
+          {/* Skip Button */}
+          {onSkip && !isVictorious && !isGameOver && (
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={disabled || loading}
+              className={`py-4 px-6 rounded-xl font-medium text-lg transition-all duration-200
+                transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
+                ${disabled || loading
+                  ? isDark
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed hover:scale-100 border border-gray-600'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed hover:scale-100 border border-gray-300'
+                  : isDark
+                    ? 'bg-gray-700 hover:bg-gray-600 text-amber-300 border border-gray-600 hover:border-amber-500 shadow-lg hover:shadow-xl focus:ring-amber-500/30'
+                    : 'bg-white hover:bg-gray-50 text-amber-700 border-2 border-amber-300 hover:border-amber-400 shadow-lg hover:shadow-xl focus:ring-amber-500/30'
+                }
+              `}
+              title="Skip to next hint"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span>Skip</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
+          )}
+        </div>
 
         {/* Hint Text */}
         {!disabled && !isVictorious && !isGameOver && (

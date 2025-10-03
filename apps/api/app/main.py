@@ -95,15 +95,25 @@ def is_fuzzy_match(guess: str, target: str, max_distance: int = None) -> bool:
     if len(guess) < 3 and len(target) > 6:
         return False
 
-    # Calculate adaptive threshold based on word length
-    if max_distance is None:
-        word_len = len(target)
-        if word_len <= 4:
-            max_distance = 1  # Very short names: 1 typo max
-        elif word_len <= 8:
-            max_distance = 2  # Medium names: 2 typos max
-        else:
-            max_distance = 3  # Long names: 3 typos max
+    # Be more strict with very short words to prevent false matches like "Will" vs "Bill"
+    if len(guess) <= 4 and len(target) <= 4:
+        # For short words, require higher similarity to prevent false matches
+        max_distance = 1
+        min_similarity = 0.8  # Much stricter for short words
+    else:
+        # Calculate adaptive threshold based on word length
+        if max_distance is None:
+            word_len = len(target)
+            if word_len <= 4:
+                max_distance = 1  # Very short names: 1 typo max
+            elif word_len <= 8:
+                max_distance = 2  # Medium names: 2 typos max
+            else:
+                max_distance = 3  # Long names: 3 typos max
+
+        # More lenient similarity threshold for reasonable partial matches
+        max_len = max(len(guess), len(target))
+        min_similarity = 0.4 if max_len > 8 else 0.5
 
     distance = levenshtein_distance(guess, target)
 
@@ -111,16 +121,13 @@ def is_fuzzy_match(guess: str, target: str, max_distance: int = None) -> bool:
     max_len = max(len(guess), len(target))
     similarity_ratio = 1 - (distance / max_len)
 
-    # More lenient similarity threshold for reasonable partial matches
-    min_similarity = 0.4 if max_len > 8 else 0.5
-
     return distance <= max_distance and similarity_ratio >= min_similarity
 
 def normalize_for_matching(text: str) -> str:
     """Normalize text for better fuzzy matching by handling common variations"""
     text = text.strip().lower()
-    # Remove common punctuation that might be missed
-    text = text.replace(".", "").replace(",", "").replace("'", "").replace("-", " ")
+    # Remove common punctuation that might be missed - handle possessives correctly
+    text = text.replace("'s ", " ").replace("'", "").replace(".", "").replace(",", "").replace("-", " ")
     # Normalize whitespace
     text = " ".join(text.split())
     return text
@@ -154,8 +161,15 @@ def find_fuzzy_match(guess: str, possible_answers: list) -> tuple[bool, str]:
                         matched_words += 1
                         break
 
-            # Allow match if most words match (at least 2/3 for longer names)
-            required_matches = max(1, len(guess_words) - 1) if len(guess_words) <= 3 else len(guess_words) * 2 // 3
+            # Require more strict word matching: at least 2/3 of words must match for multi-word names
+            # This prevents false positives while still allowing reasonable typos
+            if len(guess_words) == 2:
+                required_matches = 2  # Both words must match for 2-word names
+            elif len(guess_words) == 3:
+                required_matches = 2  # At least 2 out of 3 words must match
+            else:
+                required_matches = len(guess_words) * 2 // 3  # At least 2/3 for longer names
+
             if matched_words >= required_matches:
                 return True, answer
 
@@ -219,7 +233,8 @@ def rotate(admin_key: str = Depends(verify_admin_key)):
                 answer=character_data["answer"],
                 aliases=character_data["aliases"],
                 hints=character_data["hints"],
-                source_urls=character_data["source_urls"]
+                source_urls=character_data["source_urls"],
+                image_url=character_data.get("image_url")
             )
             
             db.add(new_puzzle)
@@ -264,7 +279,8 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
                     answer=character_data["answer"],
                     aliases=character_data["aliases"],
                     hints=character_data["hints"],
-                    source_urls=character_data["source_urls"]
+                    source_urls=character_data["source_urls"],
+                    image_url=character_data.get("image_url")
                 )
 
                 db.add(p)
@@ -311,12 +327,13 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
             "hints_count": len(p.hints)
         }
 
-        # Create response payload (with revealed_hints and answer)
+        # Create response payload (with revealed_hints, answer, and image_url)
         response_payload = {
             "puzzle_date": str(p.puzzle_date),
             "hints_count": len(p.hints),
             "revealed_hints": revealed_hints,
             "answer": answer,
+            "image_url": p.image_url if answer else None,  # Only include image if game is completed
             "signature": sign(signature_payload)
         }
 

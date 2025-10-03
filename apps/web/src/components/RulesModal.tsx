@@ -99,7 +99,7 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
                        hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500
                        transition-colors duration-200"
             >
-              Just yapping...(sybau)
+              Enough yapping!
             </button>
           </div>
         </div>

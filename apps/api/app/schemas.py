@@ -7,6 +7,7 @@ class PublicPuzzle(BaseModel):
     signature: str
     revealed_hints: List[str] = []
     answer: Optional[str] = None
+    image_url: Optional[str] = None
 
 class GuessIn(BaseModel):
     guess: str

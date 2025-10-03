@@ -199,12 +199,80 @@ export default function Home() {
     }
   }
 
+  async function handleSkip() {
+    if (!puzzle || submitting || isVictorious || isGameOver || revealedCount >= puzzle.hints_count) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    // Increment attempt count
+    const newAttemptCount = attemptCount + 1;
+    setAttemptCount(newAttemptCount);
+
+    try {
+      // Submit a dummy guess to trigger hint reveal from backend
+      const r = await submitGuess({
+        guess: "__SKIP__", // Special marker that will fail but trigger hint
+        revealed: revealedCount,
+        signature: puzzle.signature,
+        puzzle_date: puzzle.puzzle_date,
+        hints_count: puzzle.hints_count,
+      });
+
+      let newRevealedCount = revealedCount;
+
+      // The backend will return the next hint
+      if (r.reveal_next_hint && r.next_hint) {
+        setHints((prev) => [...prev, r.next_hint!]);
+        newRevealedCount = revealedCount + 1;
+        setRevealedCount(newRevealedCount);
+        setLastGuessResult({
+          isCorrect: false,
+          hasNewHint: true
+        });
+      }
+
+      // Update progress on server
+      if (sessionStatus && sessionStatus.can_play) {
+        try {
+          await updateProgress({
+            attempts: newAttemptCount,
+            hints_revealed: newRevealedCount
+          });
+        } catch (progressError) {
+          console.warn("Progress update failed (session issue), continuing game:", progressError);
+        }
+      }
+
+      // Check if this was the last hint - trigger game over
+      if (!r.reveal_next_hint && newRevealedCount >= puzzle.hints_count) {
+        setIsGameOver(true);
+        try {
+          await completeSession({
+            result: 'lost',
+            attempts: newAttemptCount,
+            hints_revealed: newRevealedCount
+          });
+          const updatedSession = await getSessionStatus();
+          setSessionStatus(updatedSession);
+        } catch (sessionError) {
+          console.warn("Session completion failed, continuing game:", sessionError);
+        }
+      }
+    } catch (e: unknown) {
+      console.error("Skip failed:", e);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   // Loading and error states
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center
         ${isDark
-          ? 'bg-gradient-to-br from-gray-900 via-amber-900 to-yellow-900'
+          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
           : 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50'
         }`}>
         <div className="text-center space-y-4">
@@ -318,6 +386,7 @@ export default function Home() {
               {sessionStatus?.can_play && (
                 <GuessForm
                   onSubmit={handleGuessSubmit}
+                  onSkip={handleSkip}
                   disabled={!sessionStatus?.can_play || !puzzle}
                   loading={submitting}
                   isVictorious={isVictorious}

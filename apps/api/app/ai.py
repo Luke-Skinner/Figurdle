@@ -5,11 +5,108 @@ from typing import Dict, List, Optional
 import logging
 import time
 import random
+import requests
 
 logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client - will be created when needed
 client = None
+
+def verify_image_url(url: str) -> bool:
+    """Verify that an image URL exists and is accessible."""
+    if not url or url == "null":
+        return False
+
+    try:
+        # Add User-Agent for Wikipedia compatibility
+        headers = {
+            'User-Agent': 'Figurdle/1.0 (https://figurdle.com; contact@figurdle.com) Python/requests'
+        }
+        response = requests.head(url, headers=headers, timeout=5, allow_redirects=True)
+        return response.status_code == 200
+    except Exception as e:
+        logger.debug(f"Image verification failed for {url}: {e}")
+        return False
+
+def get_wikipedia_image(character_name: str) -> Optional[str]:
+    """
+    Fetch character image from Wikipedia API.
+    Returns the image URL or None if not found.
+    """
+    try:
+        # Wikipedia REST API - page summary endpoint
+        wiki_name = character_name.replace(" ", "_")
+        url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{wiki_name}"
+
+        # Wikipedia requires User-Agent header
+        headers = {
+            'User-Agent': 'Figurdle/1.0 (https://figurdle.com; contact@figurdle.com) Python/requests'
+        }
+
+        response = requests.get(url, headers=headers, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+
+            # Try to get the original image first (higher quality)
+            if 'originalimage' in data and data['originalimage'].get('source'):
+                image_url = data['originalimage']['source']
+                logger.info(f"Found Wikipedia original image for {character_name}: {image_url}")
+                return image_url
+
+            # Fall back to thumbnail
+            elif 'thumbnail' in data and data['thumbnail'].get('source'):
+                image_url = data['thumbnail']['source']
+                logger.info(f"Found Wikipedia thumbnail for {character_name}: {image_url}")
+                return image_url
+
+            logger.warning(f"Wikipedia page found for {character_name} but no image available")
+            return None
+        else:
+            logger.warning(f"Wikipedia API returned {response.status_code} for {character_name}")
+            return None
+
+    except Exception as e:
+        logger.error(f"Error fetching Wikipedia image for {character_name}: {e}")
+        return None
+
+def get_character_image_url(character_name: str, gpt_suggested_url: Optional[str] = None) -> str:
+    """
+    Multi-source fallback strategy to get a reliable character image.
+
+    Priority order:
+    1. Wikipedia API (most reliable)
+    2. GPT-4 suggested URL (if valid)
+    3. Placeholder image
+    """
+    logger.info(f"Starting image search for: {character_name}")
+    logger.info(f"GPT suggested URL: {gpt_suggested_url}")
+
+    # Try Wikipedia first
+    logger.info(f"Attempting Wikipedia API for {character_name}...")
+    wiki_url = get_wikipedia_image(character_name)
+    logger.info(f"Wikipedia returned: {wiki_url}")
+
+    if wiki_url:
+        logger.info(f"Verifying Wikipedia image URL...")
+        if verify_image_url(wiki_url):
+            logger.info(f"✓ Using Wikipedia image for {character_name}: {wiki_url}")
+            return wiki_url
+        else:
+            logger.warning(f"✗ Wikipedia URL failed verification: {wiki_url}")
+
+    # Try GPT-4 suggested URL if provided
+    if gpt_suggested_url and gpt_suggested_url != "null":
+        logger.info(f"Verifying GPT-suggested URL...")
+        if verify_image_url(gpt_suggested_url):
+            logger.info(f"✓ Using GPT-suggested image for {character_name}")
+            return gpt_suggested_url
+        else:
+            logger.warning(f"✗ GPT-suggested image URL invalid for {character_name}: {gpt_suggested_url}")
+
+    # Fallback to placeholder
+    logger.warning(f"No valid image found for {character_name}, using placeholder")
+    return "https://via.placeholder.com/400x400.png?text=No+Image+Available"
 
 class CharacterGenerationError(Exception):
     pass
@@ -314,7 +411,8 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     "Hint 4: Specific major accomplishment",
     "Hint 5: Nearly gives it away but requires connecting the dots"
   ],
-  "source_urls": ["https://en.wikipedia.org/wiki/Character_Name"]
+  "source_urls": ["https://en.wikipedia.org/wiki/Character_Name"],
+  "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Character_Name.jpg"
 }'''
     
     # Craft a detailed prompt for consistent, high-quality character generation
@@ -366,7 +464,15 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         "- 'cultural icon' (too broad)",
         "- 'scientist' (too broad)",
         "- 'musician' (too broad)",
-        "- 'inventor' (too broad)"
+        "- 'inventor' (too broad)",
+        "\nIMAGE URL INSTRUCTIONS:",
+        "- CRITICAL: You must provide a working Wikipedia Commons image URL",
+        "- Search your knowledge for the actual Wikipedia page of this person",
+        "- Provide the direct image URL from upload.wikimedia.org/wikipedia/commons/",
+        "- Format: https://upload.wikimedia.org/wikipedia/commons/[hash]/[filename]",
+        "- Choose a clear portrait or recognizable photo",
+        "- VERIFY the person has a Wikipedia page before selecting them",
+        "- If absolutely no image exists, use: https://via.placeholder.com/400x400.png?text=No+Image+Available"
     ]
     
     system_prompt = '\n'.join(system_prompt_parts)
@@ -402,7 +508,7 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
             raise CharacterGenerationError(f"OpenAI returned invalid JSON: {e}")
         
         # Validate required fields
-        required_fields = ["answer", "aliases", "hints", "source_urls"]
+        required_fields = ["answer", "aliases", "hints", "source_urls", "image_url"]
         for field in required_fields:
             if field not in character_data:
                 raise CharacterGenerationError(f"Missing required field: {field}")
@@ -470,6 +576,15 @@ def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
             if not evaluation["is_too_obscure"]:
                 logger.info(f"Character approved: {character_data['answer']} "
                            f"(Score: {evaluation['familiarity_score']}/10)")
+
+                # Get reliable image URL using multi-source fallback
+                gpt_image_url = character_data.get("image_url")
+                verified_image_url = get_character_image_url(
+                    character_data["answer"],
+                    gpt_image_url
+                )
+                character_data["image_url"] = verified_image_url
+
                 return character_data
             else:
                 logger.info(f"Character too obscure: {character_data['answer']}, retrying...")

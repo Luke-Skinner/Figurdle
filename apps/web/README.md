@@ -23,6 +23,8 @@ Make sure your FastAPI backend is running on port 8080 for local development, or
 ## Features
 
 - **Daily Famous Figures**: AI-generated puzzles featuring any famous person with OpenAI GPT-4o-mini
+- **Picture Accompaniment**: Character images displayed on game completion with Wikipedia API integration
+- **Skip Button**: Optional hint reveal functionality for strategic gameplay
 - **Complete No-Repeats System**: Database tracking ensures no character appears twice
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day
 - **Automated Daily Updates**: New puzzles automatically generated at 12:01 AM PST
@@ -58,10 +60,10 @@ src/
 │   ├── GameHeader.tsx         # Title, theme toggle, rules
 │   ├── PuzzleInfo.tsx         # Date, attempts, question mark
 │   ├── HintsList.tsx          # Progressive hints with feedback
-│   ├── GuessForm.tsx          # Input form with animations
+│   ├── GuessForm.tsx          # Input form with skip button and animations
 │   ├── ThemeToggle.tsx        # Dark/light mode switcher
 │   ├── RulesModal.tsx         # Game rules modal
-│   └── GameOverMessage.tsx    # End game states
+│   └── GameOverMessage.tsx    # End game states with character images
 ├── contexts/
 │   └── ThemeContext.tsx       # Theme management
 └── lib/

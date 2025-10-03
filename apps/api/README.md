@@ -5,6 +5,7 @@ FastAPI backend for the daily historical character guessing game.
 ## Features
 
 - **AI Character Generation**: Uses OpenAI GPT-4o-mini to generate daily famous figures with hints
+- **Wikipedia API Integration**: Reliable character image sourcing with multi-source fallback strategy
 - **Complete No-Repeats System**: UsedCharacter model ensures no duplicate puzzles ever
 - **Daily Play Restriction**: Cookie-based session management enforces one play per day per user
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
@@ -125,6 +126,7 @@ FastAPI backend for the daily historical character guessing game.
 - `aliases`: List of acceptable alternative answers
 - `hints`: Progressive hints array
 - `source_urls`: Reference URLs for the character
+- `image_url`: Character image URL from Wikipedia API or fallback
 
 ### UsedCharacter Table
 - `id`: Primary key

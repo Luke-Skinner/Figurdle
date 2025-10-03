@@ -165,9 +165,11 @@ export default function Home() {
             attempts: newAttemptCount,
             hints_revealed: newRevealedCount
           });
-          // Update session status
+          // Update session status and refetch puzzle with answer and image
           const updatedSession = await getSessionStatus();
           setSessionStatus(updatedSession);
+          const updatedPuzzle = await getTodayPuzzle();
+          setPuzzle(updatedPuzzle);
         } catch (sessionError) {
           console.warn("Session completion failed, continuing game:", sessionError);
           // Don't block victory state if session tracking fails
@@ -182,9 +184,11 @@ export default function Home() {
             attempts: newAttemptCount,
             hints_revealed: newRevealedCount
           });
-          // Update session status
+          // Update session status and refetch puzzle with answer and image
           const updatedSession = await getSessionStatus();
           setSessionStatus(updatedSession);
+          const updatedPuzzle = await getTodayPuzzle();
+          setPuzzle(updatedPuzzle);
         } catch (sessionError) {
           console.warn("Session completion failed, continuing game:", sessionError);
           // Don't block game over state if session tracking fails
@@ -254,8 +258,11 @@ export default function Home() {
             attempts: newAttemptCount,
             hints_revealed: newRevealedCount
           });
+          // Update session status and refetch puzzle with answer and image
           const updatedSession = await getSessionStatus();
           setSessionStatus(updatedSession);
+          const updatedPuzzle = await getTodayPuzzle();
+          setPuzzle(updatedPuzzle);
         } catch (sessionError) {
           console.warn("Session completion failed, continuing game:", sessionError);
         }

@@ -83,6 +83,8 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hints**: 5 hints maximum revealed as you make incorrect guesses (reduced difficulty)
 - **Smart Attempt Tracking**: 6 attempts maximum with fraction display (1/6, 2/6, etc.)
+- **Picture Accompaniment**: Character images displayed on game completion with Wikipedia API integration and multi-source fallback
+- **Skip Button**: Optional hint reveal without guessing, allowing players to progress strategically
 - **Advanced Fuzzy Matching**: Typo tolerance using Levenshtein distance algorithm - handles common misspellings
 - **Answer Persistence**: Game completion state and answers persist across browser sessions
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day per user

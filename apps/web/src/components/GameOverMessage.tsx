@@ -100,6 +100,10 @@ export default function GameOverMessage({
                 src={puzzle?.image_url || 'https://via.placeholder.com/400x400.png?text=No+Image+Available'}
                 alt={result?.normalized_answer || puzzle?.answer || 'Character'}
                 className="mx-auto rounded-lg shadow-lg max-w-xs w-full object-cover"
+                loading="eager"
+                crossOrigin="anonymous"
+                width="400"
+                height="400"
                 onError={(e) => {
                   // Fallback to placeholder if image fails to load
                   const img = e.target as HTMLImageElement;
@@ -232,6 +236,10 @@ export default function GameOverMessage({
                   src={puzzle?.image_url || 'https://via.placeholder.com/400x400.png?text=No+Image+Available'}
                   alt={result?.normalized_answer || puzzle?.answer || 'Character'}
                   className="mx-auto rounded-lg shadow-lg max-w-xs w-full object-cover"
+                  loading="eager"
+                  crossOrigin="anonymous"
+                  width="400"
+                  height="400"
                   onError={(e) => {
                     // Fallback to placeholder if image fails to load
                     const img = e.target as HTMLImageElement;

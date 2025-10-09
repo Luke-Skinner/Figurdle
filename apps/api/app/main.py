@@ -310,16 +310,17 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
                 UserSession.puzzle_date == today_pst()
             ).first()
 
-            if session_record and session_record.hints_revealed > 0:
-                # Include the hints they've already seen
-                hints_count = min(session_record.hints_revealed, len(p.hints))
-                revealed_hints = p.hints[:hints_count]
-                logger.info(f"Returning {len(revealed_hints)} revealed hints for session {figurdle_session[:8]}...")
-
             # Include answer if session is completed
             if session_record and session_record.completed:
                 answer = p.answer
-                logger.info(f"Including answer for completed session {figurdle_session[:8]}...")
+                # Show all hints when game is completed
+                revealed_hints = p.hints
+                logger.info(f"Including answer and all {len(revealed_hints)} hints for completed session {figurdle_session[:8]}...")
+            elif session_record and session_record.hints_revealed > 0:
+                # Include only the hints they've already seen for in-progress games
+                hints_count = min(session_record.hints_revealed, len(p.hints))
+                revealed_hints = p.hints[:hints_count]
+                logger.info(f"Returning {len(revealed_hints)} revealed hints for session {figurdle_session[:8]}...")
 
         # Create signature payload (without revealed_hints for compatibility)
         signature_payload = {
@@ -334,6 +335,76 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
             "revealed_hints": revealed_hints,
             "answer": answer,
             "image_url": p.image_url if answer else None,  # Only include image if game is completed
+            "signature": sign(signature_payload)
+        }
+
+        return response_payload
+
+@app.get("/puzzle/available")
+def get_available_puzzles():
+    """Get list of all available puzzle dates for past puzzles feature"""
+    with SessionLocal() as db:
+        puzzles = db.query(Puzzle).order_by(Puzzle.puzzle_date.desc()).all()
+        return {
+            "puzzles": [
+                {
+                    "puzzle_date": str(p.puzzle_date),
+                    "has_image": p.image_url is not None
+                }
+                for p in puzzles
+            ]
+        }
+
+@app.get("/puzzle/by-date/{date_str}", response_model=PublicPuzzle)
+def get_puzzle_by_date(date_str: str, figurdle_session: str = Cookie(None)):
+    """Get puzzle for a specific date to support playing past puzzles"""
+    from datetime import datetime as dt
+
+    try:
+        # Parse the date string
+        puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD")
+
+    with SessionLocal() as db:
+        p = db.query(Puzzle).filter(Puzzle.puzzle_date == puzzle_date).one_or_none()
+        if not p:
+            raise HTTPException(404, f"No puzzle found for date {date_str}")
+
+        # Check if user has a session for this specific puzzle date
+        revealed_hints = []
+        answer = None
+        if figurdle_session:
+            session_record = db.query(UserSession).filter(
+                UserSession.session_id == figurdle_session,
+                UserSession.puzzle_date == puzzle_date
+            ).first()
+
+            # Include answer if session is completed
+            if session_record and session_record.completed:
+                answer = p.answer
+                # Show all hints when game is completed
+                revealed_hints = p.hints
+                logger.info(f"Including answer and all {len(revealed_hints)} hints for completed session on {date_str}")
+            elif session_record and session_record.hints_revealed > 0:
+                # Include only the hints they've already seen for in-progress games
+                hints_count = min(session_record.hints_revealed, len(p.hints))
+                revealed_hints = p.hints[:hints_count]
+                logger.info(f"Returning {len(revealed_hints)} revealed hints for session on {date_str}")
+
+        # Create signature payload
+        signature_payload = {
+            "puzzle_date": str(p.puzzle_date),
+            "hints_count": len(p.hints)
+        }
+
+        # Create response payload
+        response_payload = {
+            "puzzle_date": str(p.puzzle_date),
+            "hints_count": len(p.hints),
+            "revealed_hints": revealed_hints,
+            "answer": answer,
+            "image_url": p.image_url if answer else None,
             "signature": sign(signature_payload)
         }
 
@@ -356,8 +427,17 @@ def post_guess(g: GuessIn, request: Request):
     if g.signature != expected_signature:
         raise HTTPException(400, "Invalid signature")
 
+    # Parse the puzzle date from query parameter
+    from datetime import datetime as dt
+    try:
+        puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(400, "Invalid date format in query parameter")
+
     with SessionLocal() as db:
-        p = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).one()
+        p = db.query(Puzzle).filter(Puzzle.puzzle_date == puzzle_date).one_or_none()
+        if not p:
+            raise HTTPException(404, f"No puzzle found for date {date_str}")
         norm = g.guess.strip().lower()
         answers = [p.answer] + p.aliases  # Keep original case for matching
 
@@ -387,9 +467,20 @@ def post_guess(g: GuessIn, request: Request):
 
 @app.get("/session/status")
 def get_session_status(request: Request, response: Response, figurdle_session: str = Cookie(None)):
-    """Check session status and create session if needed"""
+    """Check session status and create session if needed - supports past puzzles via puzzle_date param"""
     logger.info(f"Session status called - Session: {figurdle_session[:8] if figurdle_session else 'None'}...")
     logger.info(f"Session status cookies count: {len(request.cookies)}")
+
+    # Get puzzle date from query parameter (defaults to today)
+    date_str = request.query_params.get("puzzle_date")
+    if date_str:
+        from datetime import datetime as dt
+        try:
+            puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(400, "Invalid puzzle_date format. Use YYYY-MM-DD")
+    else:
+        puzzle_date = today_pst()
 
     # Create session if doesn't exist
     if not figurdle_session:
@@ -405,11 +496,11 @@ def get_session_status(request: Request, response: Response, figurdle_session: s
         )
         logger.info(f"Created new session: {figurdle_session[:8]}... (secure={settings.ENVIRONMENT == 'production'})")
 
-    # Check if user has played today
+    # Check if user has played this puzzle
     with SessionLocal() as db:
         session_record = db.query(UserSession).filter(
             UserSession.session_id == figurdle_session,
-            UserSession.puzzle_date == today_pst()
+            UserSession.puzzle_date == puzzle_date
         ).first()
 
         return {
@@ -427,7 +518,7 @@ def complete_session(
     request: Request,
     figurdle_session: str = Cookie(None)
 ):
-    """Record game completion"""
+    """Record game completion - supports past puzzles via puzzle_date param"""
     logger.info(f"Complete session called - Session: {figurdle_session[:8] if figurdle_session else 'None'}...")
     logger.info(f"Query params: {dict(request.query_params)}")
 
@@ -439,12 +530,23 @@ def complete_session(
     result = request.query_params.get("result")
     attempts = request.query_params.get("attempts")
     hints_revealed = request.query_params.get("hints_revealed")
+    date_str = request.query_params.get("puzzle_date")
 
     if not result or not attempts or not hints_revealed:
         raise HTTPException(400, "Missing query parameters: result, attempts, hints_revealed")
 
     if result not in ['won', 'lost']:
         raise HTTPException(400, "Result must be 'won' or 'lost'")
+
+    # Parse puzzle date (defaults to today)
+    if date_str:
+        from datetime import datetime as dt
+        try:
+            puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(400, "Invalid puzzle_date format. Use YYYY-MM-DD")
+    else:
+        puzzle_date = today_pst()
 
     try:
         attempts = int(attempts)
@@ -455,13 +557,13 @@ def complete_session(
     with SessionLocal() as db:
         session_record = db.query(UserSession).filter(
             UserSession.session_id == figurdle_session,
-            UserSession.puzzle_date == today_pst()
+            UserSession.puzzle_date == puzzle_date
         ).first()
 
         if not session_record:
             session_record = UserSession(
                 session_id=figurdle_session,
-                puzzle_date=today_pst(),
+                puzzle_date=puzzle_date,
                 completed=True,
                 result=result,
                 attempts_count=attempts,
@@ -490,7 +592,7 @@ def update_session_progress(
     request: Request,
     figurdle_session: str = Cookie(None)
 ):
-    """Update session progress during gameplay"""
+    """Update session progress during gameplay - supports past puzzles via puzzle_date param"""
     logger.info(f"Update progress called - Session: {figurdle_session[:8] if figurdle_session else 'None'}...")
     logger.info(f"Query params: {dict(request.query_params)}")
 
@@ -501,9 +603,20 @@ def update_session_progress(
     # Get parameters from query string
     attempts = request.query_params.get("attempts")
     hints_revealed = request.query_params.get("hints_revealed")
+    date_str = request.query_params.get("puzzle_date")
 
     if not attempts or not hints_revealed:
         raise HTTPException(400, "Missing query parameters: attempts, hints_revealed")
+
+    # Parse puzzle date (defaults to today)
+    if date_str:
+        from datetime import datetime as dt
+        try:
+            puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(400, "Invalid puzzle_date format. Use YYYY-MM-DD")
+    else:
+        puzzle_date = today_pst()
 
     try:
         attempts = int(attempts)
@@ -514,13 +627,13 @@ def update_session_progress(
     with SessionLocal() as db:
         session_record = db.query(UserSession).filter(
             UserSession.session_id == figurdle_session,
-            UserSession.puzzle_date == today_pst()
+            UserSession.puzzle_date == puzzle_date
         ).first()
 
         if not session_record:
             session_record = UserSession(
                 session_id=figurdle_session,
-                puzzle_date=today_pst(),
+                puzzle_date=puzzle_date,
                 completed=False,
                 attempts_count=attempts,
                 hints_revealed=hints_revealed

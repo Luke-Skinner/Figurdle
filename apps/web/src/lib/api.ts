@@ -50,11 +50,30 @@ export type CompleteSessionRequest = {
 export type UpdateProgressRequest = {
   attempts: number;
   hints_revealed: number;
+  puzzle_date?: string;
+};
+
+export type AvailablePuzzle = {
+  puzzle_date: string;
+  has_image: boolean;
+};
+
+export type AvailablePuzzlesResponse = {
+  puzzles: AvailablePuzzle[];
 };
 
 export const getTodayPuzzle = () => http<PublicPuzzle>("/puzzle/today", {
   credentials: "include"
 });
+
+export const getPuzzleByDate = (date: string) => http<PublicPuzzle>(`/puzzle/by-date/${date}`, {
+  credentials: "include"
+});
+
+export const getAvailablePuzzles = () => http<AvailablePuzzlesResponse>("/puzzle/available", {
+  credentials: "include"
+});
+
 export const submitGuess = (body: GuessIn) =>
   http<GuessOut>(`/guess?date=${encodeURIComponent(body.puzzle_date)}&hc=${body.hints_count}`, {
     method: "POST",
@@ -63,20 +82,20 @@ export const submitGuess = (body: GuessIn) =>
   });
 
 // Session management endpoints
-export const getSessionStatus = () =>
-  http<SessionStatus>("/session/status", {
+export const getSessionStatus = (puzzleDate?: string) =>
+  http<SessionStatus>(`/session/status${puzzleDate ? `?puzzle_date=${encodeURIComponent(puzzleDate)}` : ''}`, {
     credentials: "include"
   });
 
-export const completeSession = (body: CompleteSessionRequest) =>
-  http<{success: boolean; result?: string; message?: string}>(`/session/complete?result=${body.result}&attempts=${body.attempts}&hints_revealed=${body.hints_revealed}`, {
+export const completeSession = (body: CompleteSessionRequest & { puzzle_date?: string }) =>
+  http<{success: boolean; result?: string; message?: string}>(`/session/complete?result=${body.result}&attempts=${body.attempts}&hints_revealed=${body.hints_revealed}${body.puzzle_date ? `&puzzle_date=${encodeURIComponent(body.puzzle_date)}` : ''}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Length": "0" }
   });
 
 export const updateProgress = (body: UpdateProgressRequest) =>
-  http<{success: boolean}>(`/session/update-progress?attempts=${body.attempts}&hints_revealed=${body.hints_revealed}`, {
+  http<{success: boolean}>(`/session/update-progress?attempts=${body.attempts}&hints_revealed=${body.hints_revealed}${body.puzzle_date ? `&puzzle_date=${encodeURIComponent(body.puzzle_date)}` : ''}`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Length": "0" }

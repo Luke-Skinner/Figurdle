@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  getTodayPuzzle, submitGuess, getSessionStatus, completeSession, updateProgress,
+  getTodayPuzzle, getPuzzleByDate, submitGuess, getSessionStatus, completeSession, updateProgress,
   type PublicPuzzle, type GuessOut, type SessionStatus
 } from "../lib/api";
 import GameHeader from "../components/GameHeader";
@@ -30,19 +30,36 @@ export default function Home() {
     message?: string;
   } | null>(null);
   const [shouldShake, setShouldShake] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { isDark } = useTheme();
+
+  function handleDateSelection(date: string) {
+    // Reset all game state when selecting a new date
+    setSelectedDate(date);
+    setResult(null);
+    setHints([]);
+    setRevealedCount(0);
+    setIsVictorious(false);
+    setIsGameOver(false);
+    setAttemptCount(0);
+    setLastGuessResult(null);
+    setError(null);
+  }
 
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
 
-        // Check session status first
-        const session = await getSessionStatus();
-        setSessionStatus(session);
-
-        const p = await getTodayPuzzle();
+        // Load puzzle by selected date or today
+        const p = selectedDate
+          ? await getPuzzleByDate(selectedDate)
+          : await getTodayPuzzle();
         setPuzzle(p);
+
+        // Check session status for this puzzle
+        const session = await getSessionStatus(p.puzzle_date);
+        setSessionStatus(session);
 
         // If user has already completed today's puzzle, show completed state
         if (session.has_played && !session.can_play) {
@@ -87,7 +104,7 @@ export default function Home() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [selectedDate]);
 
   async function handleGuessSubmit(guess: string) {
     if (!puzzle || !sessionStatus?.can_play) return;
@@ -146,7 +163,8 @@ export default function Home() {
           console.log("Attempting to update progress:", { attempts: newAttemptCount, hints_revealed: newRevealedCount });
           await updateProgress({
             attempts: newAttemptCount,
-            hints_revealed: newRevealedCount
+            hints_revealed: newRevealedCount,
+            puzzle_date: puzzle.puzzle_date
           });
         } catch (progressError) {
           console.warn("Progress update failed (session issue), continuing game:", progressError);
@@ -163,13 +181,19 @@ export default function Home() {
           await completeSession({
             result: 'won',
             attempts: newAttemptCount,
-            hints_revealed: newRevealedCount
+            hints_revealed: newRevealedCount,
+            puzzle_date: puzzle.puzzle_date
           });
-          // Update session status and refetch puzzle with answer and image
-          const updatedSession = await getSessionStatus();
+          // Update session status and refetch puzzle with answer, image, and all hints
+          const updatedSession = await getSessionStatus(puzzle.puzzle_date);
           setSessionStatus(updatedSession);
-          const updatedPuzzle = await getTodayPuzzle();
+          const updatedPuzzle = selectedDate
+            ? await getPuzzleByDate(selectedDate)
+            : await getTodayPuzzle();
           setPuzzle(updatedPuzzle);
+          // Show all hints now that game is completed
+          setHints(updatedPuzzle.revealed_hints || []);
+          setRevealedCount(updatedPuzzle.revealed_hints?.length || 0);
         } catch (sessionError) {
           console.warn("Session completion failed, continuing game:", sessionError);
           // Don't block victory state if session tracking fails
@@ -182,13 +206,19 @@ export default function Home() {
           await completeSession({
             result: 'lost',
             attempts: newAttemptCount,
-            hints_revealed: newRevealedCount
+            hints_revealed: newRevealedCount,
+            puzzle_date: puzzle.puzzle_date
           });
-          // Update session status and refetch puzzle with answer and image
-          const updatedSession = await getSessionStatus();
+          // Update session status and refetch puzzle with answer, image, and all hints
+          const updatedSession = await getSessionStatus(puzzle.puzzle_date);
           setSessionStatus(updatedSession);
-          const updatedPuzzle = await getTodayPuzzle();
+          const updatedPuzzle = selectedDate
+            ? await getPuzzleByDate(selectedDate)
+            : await getTodayPuzzle();
           setPuzzle(updatedPuzzle);
+          // Show all hints now that game is completed
+          setHints(updatedPuzzle.revealed_hints || []);
+          setRevealedCount(updatedPuzzle.revealed_hints?.length || 0);
         } catch (sessionError) {
           console.warn("Session completion failed, continuing game:", sessionError);
           // Don't block game over state if session tracking fails
@@ -367,7 +397,11 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8 max-w-4xl">
           <div className="space-y-8">
             {/* Game Header */}
-            <GameHeader className="mb-12" />
+            <GameHeader
+              className="mb-12"
+              onSelectDate={handleDateSelection}
+              currentDate={puzzle?.puzzle_date}
+            />
 
             {/* Game Content */}
             <div className="max-w-2xl mx-auto space-y-6">

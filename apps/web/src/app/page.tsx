@@ -20,6 +20,7 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [hints, setHints] = useState<string[]>([]); // local revealed hints
   const [revealedCount, setRevealedCount] = useState(0); // track locally revealed hints
+  const [actuallyRevealedCount, setActuallyRevealedCount] = useState(0); // hints player revealed during gameplay
   const [isVictorious, setIsVictorious] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus | null>(null);
@@ -39,6 +40,7 @@ export default function Home() {
     setResult(null);
     setHints([]);
     setRevealedCount(0);
+    setActuallyRevealedCount(0);
     setIsVictorious(false);
     setIsGameOver(false);
     setAttemptCount(0);
@@ -66,6 +68,7 @@ export default function Home() {
           setIsVictorious(session.result === 'won');
           setIsGameOver(session.result === 'lost');
           setAttemptCount(session.attempts);
+          setActuallyRevealedCount(session.hints_revealed); // Store the actual count from session
           setRevealedCount(session.hints_revealed);
 
           // Set revealed hints from puzzle response
@@ -83,6 +86,7 @@ export default function Home() {
         } else if (session.can_play && session.has_played) {
           // User is mid-game - restore their progress
           setRevealedCount(session.hints_revealed || 0);
+          setActuallyRevealedCount(session.hints_revealed || 0);
           setAttemptCount(session.attempts || 0);
           setIsVictorious(false);
           setIsGameOver(false);
@@ -93,6 +97,7 @@ export default function Home() {
           // Fresh game
           setHints([]);
           setRevealedCount(0);
+          setActuallyRevealedCount(0);
           setAttemptCount(0);
           setIsVictorious(false);
           setIsGameOver(false);
@@ -141,6 +146,7 @@ export default function Home() {
         setHints((prev) => [...prev, r.next_hint!]);
         newRevealedCount = revealedCount + 1;
         setRevealedCount(newRevealedCount);
+        setActuallyRevealedCount(newRevealedCount); // Track what player actually revealed
         setLastGuessResult({
           isCorrect: false,
           hasNewHint: true
@@ -261,6 +267,7 @@ export default function Home() {
         setHints((prev) => [...prev, r.next_hint!]);
         newRevealedCount = revealedCount + 1;
         setRevealedCount(newRevealedCount);
+        setActuallyRevealedCount(newRevealedCount); // Track what player actually revealed
         setLastGuessResult({
           isCorrect: false,
           hasNewHint: true
@@ -443,7 +450,7 @@ export default function Home() {
                 isGameOver={isGameOver}
                 result={result}
                 hints={hints}
-                revealedCount={revealedCount}
+                revealedCount={actuallyRevealedCount}
                 attempts={attemptCount}
                 puzzle={puzzle}
               />

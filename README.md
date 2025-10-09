@@ -79,15 +79,17 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 ## Key Features
 
 - **AI-Generated Characters**: Daily famous figures created with OpenAI GPT-4o-mini
+- **Past Puzzles Archive**: Browse and play any previous day's puzzle via calendar modal - never miss a puzzle!
+- **Complete Hint Reveal**: See all 5 hints when game ends, regardless of when you solved it
 - **No Character Repeats**: Complete duplicate prevention system ensures every puzzle is unique
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
-- **Progressive Hints**: 5 hints maximum revealed as you make incorrect guesses (reduced difficulty)
+- **Progressive Hints**: 5 hints maximum revealed as you make incorrect guesses
 - **Smart Attempt Tracking**: 6 attempts maximum with fraction display (1/6, 2/6, etc.)
-- **Picture Accompaniment**: Character images displayed on game completion with Wikipedia API integration and multi-source fallback
+- **Picture Accompaniment**: Character images with mobile-optimized loading (eager loading, CORS support, explicit dimensions)
 - **Skip Button**: Optional hint reveal without guessing, allowing players to progress strategically
-- **Advanced Fuzzy Matching**: Typo tolerance using Levenshtein distance algorithm - handles common misspellings
+- **Enhanced Fuzzy Matching**: Stricter validation - both words required for 2-word names, improved apostrophe handling
 - **Answer Persistence**: Game completion state and answers persist across browser sessions
-- **Daily Play Restriction**: Cookie-based session system enforces one play per day per user
+- **Multi-Date Session Tracking**: Track progress across multiple puzzle dates with cookie-based sessions
 - **Amber Theme**: Elegant amber/brown color scheme with full dark/light mode support
 - **Secure Validation**: HMAC signature verification for API integrity and admin endpoint authentication
 - **Resilient Error Handling**: Fallbacks for development environment issues

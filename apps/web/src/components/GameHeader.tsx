@@ -23,11 +23,12 @@ export default function GameHeader({ className = "", onSelectDate, currentDate }
         <div className="absolute top-0 left-0">
           <button
             onClick={() => setShowCalendar(true)}
-            className={`p-3 rounded-lg transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2
-              ${isDark
-                ? 'bg-amber-900/30 text-amber-400 hover:bg-amber-800/50 focus:ring-amber-400'
-                : 'bg-amber-50 text-amber-600 hover:bg-amber-100 focus:ring-amber-500'
-              }`}
+            className={`relative inline-flex items-center justify-center w-12 h-12 rounded-full
+                       transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2
+                       ${isDark
+                         ? 'bg-gray-800 hover:bg-gray-700 focus:ring-amber-400 text-amber-400'
+                         : 'bg-gray-100 hover:bg-gray-200 focus:ring-amber-500 text-gray-700'
+                       }`}
             aria-label="Select puzzle date"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

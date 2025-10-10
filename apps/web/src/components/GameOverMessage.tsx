@@ -140,7 +140,7 @@ export default function GameOverMessage({
           </div>
 
           {/* Hints Summary */}
-          {hints.length > 0 && (
+          {revealedCount > 0 && (
             <div className={`backdrop-blur-sm rounded-xl p-4 text-left border
               ${isDark
                 ? 'bg-gray-800/70 border-amber-600/50'
@@ -151,7 +151,7 @@ export default function GameOverMessage({
                 Hints you revealed:
               </div>
               <ul className="space-y-2">
-                {hints.map((hint, i) => (
+                {hints.slice(0, revealedCount).map((hint, i) => (
                   <li key={i} className={`flex items-start gap-2 text-sm
                     ${isDark ? 'text-amber-200' : 'text-amber-700'}`}>
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5

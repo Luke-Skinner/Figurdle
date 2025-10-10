@@ -19,25 +19,28 @@ export default function GameHeader({ className = "", onSelectDate, currentDate }
   return (
     <>
       <header className={`text-center space-y-4 relative ${className}`}>
-        {/* Calendar Button - positioned absolutely in top left */}
-        <button
-          onClick={() => setShowCalendar(true)}
-          className={`absolute top-0 left-0 inline-flex items-center justify-center w-12 h-12 rounded-full
-                     transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2
-                     ${isDark
-                       ? 'bg-gray-800 hover:bg-gray-700 focus:ring-amber-400 text-amber-400'
-                       : 'bg-gray-100 hover:bg-gray-200 focus:ring-amber-500 text-gray-700'
-                     }`}
-          aria-label="Select puzzle date"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </button>
+        {/* Top controls row - absolute positioned with flex */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between">
+          {/* Calendar Button */}
+          <button
+            onClick={() => setShowCalendar(true)}
+            className={`inline-flex items-center justify-center w-12 h-12 rounded-full
+                       transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2
+                       ${isDark
+                         ? 'bg-gray-800 hover:bg-gray-700 focus:ring-amber-400 text-amber-400'
+                         : 'bg-gray-100 hover:bg-gray-200 focus:ring-amber-500 text-gray-700'
+                       }`}
+            aria-label="Select puzzle date"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </button>
 
-        {/* Theme Toggle - positioned absolutely in top right */}
-        <ThemeToggle className="absolute top-0 right-0" />
+          {/* Theme Toggle */}
+          <ThemeToggle />
+        </div>
 
         <div className="space-y-2">
           <h1 className={`text-4xl md:text-5xl font-bold bg-gradient-to-r bg-clip-text text-transparent

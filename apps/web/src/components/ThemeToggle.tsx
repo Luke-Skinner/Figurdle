@@ -11,7 +11,7 @@ export default function ThemeToggle({ className = "" }: ThemeToggleProps) {
   return (
     <button
       onClick={toggleTheme}
-      className={`relative inline-flex items-center justify-center w-12 h-12 rounded-full
+      className={`inline-flex items-center justify-center w-12 h-12 rounded-full
                  transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2
                  ${isDark
                    ? 'bg-gray-800 hover:bg-gray-700 focus:ring-yellow-400 text-yellow-400'

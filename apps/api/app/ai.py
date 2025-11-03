@@ -141,18 +141,17 @@ def get_openai_client():
     return client
 
 def get_all_used_characters() -> List[str]:
-    """Get ALL character names ever used to prevent any repeats."""
+    """Get ALL character names ever used to prevent any repeats (no longer includes aliases)."""
     from .db import SessionLocal
     from .models import Puzzle, UsedCharacter
 
     with SessionLocal() as db:
         characters = []
 
-        # Get from puzzles table
+        # Get from puzzles table (main answer only - aliases no longer used)
         puzzles = db.query(Puzzle).all()
         for puzzle in puzzles:
             characters.append(puzzle.answer.lower())
-            characters.extend([alias.lower() for alias in puzzle.aliases])
 
         # Get from used_characters table
         used_chars = db.query(UsedCharacter).all()
@@ -161,7 +160,7 @@ def get_all_used_characters() -> List[str]:
         return list(set(characters))  # Remove duplicates
 
 def record_used_character(character_data: Dict[str, any], puzzle_date) -> None:
-    """Record character and all aliases as used."""
+    """Record character as used (no longer recording aliases - fuzzy matching handles variations)."""
     from .db import SessionLocal
     from .models import UsedCharacter
     import logging
@@ -170,23 +169,14 @@ def record_used_character(character_data: Dict[str, any], puzzle_date) -> None:
 
     with SessionLocal() as db:
         try:
-            # Record main answer
+            # Record only the main answer (normalized to lowercase)
             main_char = UsedCharacter(
                 character_name=character_data["answer"].lower(),
                 puzzle_date=puzzle_date
             )
             db.add(main_char)
-
-            # Record all aliases
-            for alias in character_data["aliases"]:
-                alias_char = UsedCharacter(
-                    character_name=alias.lower(),
-                    puzzle_date=puzzle_date
-                )
-                db.add(alias_char)
-
             db.commit()
-            logger.info(f"Recorded {character_data['answer']} and {len(character_data['aliases'])} aliases as used")
+            logger.info(f"Recorded {character_data['answer']} as used")
 
         except Exception as e:
             db.rollback()
@@ -382,14 +372,21 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
     Raises CharacterGenerationError if generation fails.
     """
     
-    # Build exclusion text for prompt
+    # Build exclusion text for prompt - show MORE characters to AI
     exclusion_text = ""
     if avoid_characters and len(avoid_characters) > 0:
-        character_list = ', '.join(avoid_characters[:50])
-        exclusion_text = "\nIMPORTANT - DO NOT choose any of these recent characters:\n" + character_list
-        if len(avoid_characters) > 50:
-            extra_count = len(avoid_characters) - 50
-            exclusion_text += "\n(and " + str(extra_count) + " more recent characters...)"
+        # Show up to 150 characters instead of 50 for better avoidance
+        display_count = min(150, len(avoid_characters))
+        character_list = ', '.join(avoid_characters[:display_count])
+        exclusion_text = "\n" + "="*50
+        exclusion_text += "\nCRITICAL: DO NOT CHOOSE ANY OF THESE ALREADY-USED CHARACTERS:"
+        exclusion_text += "\n" + "="*50
+        exclusion_text += "\n" + character_list
+        if len(avoid_characters) > display_count:
+            extra_count = len(avoid_characters) - display_count
+            exclusion_text += "\n(Plus " + str(extra_count) + " more - TOTAL FORBIDDEN: " + str(len(avoid_characters)) + " characters)"
+        exclusion_text += "\n" + "="*50
+        exclusion_text += "\nYou MUST choose someone NOT in this list!"
 
     # Adjust difficulty based on attempt number
     difficulty_guidance = ""
@@ -401,9 +398,9 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         difficulty_guidance = "Choose any significant figure from any field, even if less commonly known."
     
     # Create the JSON template separately to avoid any f-string processing
+    # NOTE: aliases field removed - fuzzy matching handles name variations
     json_template = '''{
   "answer": "Full Name",
-  "aliases": ["Alternative Name 1", "Nickname", "Title"],
   "hints": [
     "Hint 1: Very broad historical context",
     "Hint 2: Time period or geographical region",
@@ -428,6 +425,12 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         "- " + difficulty_guidance,
         "\nReturn your response as valid JSON with this exact structure:",
         json_template,
+        "\nCRITICAL RULES FOR ANSWER FORMAT:",
+        "- Use ONLY the person's commonly known name",
+        "- DO NOT add descriptive suffixes like 'of Sparta', 'of Macedonia', 'the Conqueror'",
+        "- DO NOT add titles unless they're part of how they're commonly known (e.g., 'Dr. Seuss' is OK)",
+        "- Examples: 'Leonidas' NOT 'Leonidas of Sparta', 'Alexander the Great' is OK but 'Alexander of Macedonia' is NOT",
+        "- Keep it simple: just the name people use when talking about this person",
         "\nCRITICAL RULES FOR HINTS:",
         "- NEVER mention the person's name, nickname, or any part of their name in any hint",
         "- NEVER mention titles that directly contain their name (e.g., don't say 'Napoleonic Wars' for Napoleon)",
@@ -447,24 +450,6 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         "- 'My theory changed physics...' (first person - forbidden)",
         "- 'I am known as Napoleon' (contains name)",
         "- 'The Napoleonic era was named after me' (contains name derivative)",
-        "\nCRITICAL RULES FOR ALIASES:",
-        "- Aliases must be SPECIFIC NAMES people actually use to refer to this exact person",
-        "- Include nicknames, shortened names, stage names, pen names, titles with their name",
-        "- NEVER use broad descriptive terms like 'artist', 'scientist', 'cultural icon', 'inventor'",
-        "- NEVER use job titles like 'president', 'actor', 'writer', 'musician'",
-        "- NEVER use generic descriptors like 'genius', 'legend', 'pioneer', 'master'",
-        "\nGOOD ALIAS EXAMPLES:",
-        "- 'Einstein' (for Albert Einstein)",
-        "- 'The King of Pop' (for Michael Jackson)",
-        "- 'Honest Abe' (for Abraham Lincoln)",
-        "- 'The Iron Lady' (for Margaret Thatcher)",
-        "- 'Elvis' (for Elvis Presley)",
-        "\nBAD ALIAS EXAMPLES (NEVER USE):",
-        "- 'artist' (too broad)",
-        "- 'cultural icon' (too broad)",
-        "- 'scientist' (too broad)",
-        "- 'musician' (too broad)",
-        "- 'inventor' (too broad)",
         "\nIMAGE URL INSTRUCTIONS:",
         "- CRITICAL: You must provide a working Wikipedia Commons image URL",
         "- Search your knowledge for the actual Wikipedia page of this person",
@@ -507,22 +492,39 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
             logger.error(f"Raw response: {content}")
             raise CharacterGenerationError(f"OpenAI returned invalid JSON: {e}")
         
-        # Validate required fields
-        required_fields = ["answer", "aliases", "hints", "source_urls", "image_url"]
+        # Validate required fields (aliases is now optional)
+        required_fields = ["answer", "hints", "source_urls", "image_url"]
         for field in required_fields:
             if field not in character_data:
                 raise CharacterGenerationError(f"Missing required field: {field}")
+
+        # Set aliases to empty list if not provided (we don't use them anymore)
+        if "aliases" not in character_data:
+            character_data["aliases"] = []
         
         # Validate data types and content
         if not isinstance(character_data["answer"], str):
             raise CharacterGenerationError("Answer must be a string")
-            
-        if not isinstance(character_data["aliases"], list):
-            raise CharacterGenerationError("Aliases must be a list")
-            
+
+        # Clean up answer - remove common suffixes like "of Sparta", "of Macedonia"
+        answer = character_data["answer"]
+        if " of " in answer:
+            # Split and keep only the name part
+            parts = answer.split(" of ")
+            if len(parts) == 2:
+                # Check if second part is a place (capitalized word/phrase)
+                place = parts[1].strip()
+                if place and place[0].isupper() and len(place.split()) <= 3:
+                    character_data["answer"] = parts[0].strip()
+                    logger.info(f"Cleaned answer from '{answer}' to '{character_data['answer']}'")
+
+        # Validate aliases if present (but it's optional now)
+        if character_data.get("aliases") and not isinstance(character_data["aliases"], list):
+            character_data["aliases"] = []  # Reset to empty if invalid
+
         if not isinstance(character_data["hints"], list) or len(character_data["hints"]) != 5:
             raise CharacterGenerationError("Must provide exactly 5 hints")
-            
+
         if not isinstance(character_data["source_urls"], list):
             raise CharacterGenerationError("Source URLs must be a list")
         
@@ -542,16 +544,11 @@ def generate_daily_character(avoid_characters: List[str] = None, attempt: int = 
         raise CharacterGenerationError(f"Failed to generate character: {e}")
 
 def is_duplicate(character_data: Dict[str, any], avoid_list: List[str]) -> bool:
-    """Check if generated character is in the avoid list."""
+    """Check if generated character is in the avoid list (no longer checks aliases)."""
     answer_lower = character_data["answer"].lower()
-    aliases_lower = [alias.lower() for alias in character_data["aliases"]]
-    
-    all_names = [answer_lower] + aliases_lower
-    
-    for name in all_names:
-        if name in avoid_list:
-            return True
-    return False
+
+    # Only check the main answer since we no longer use aliases
+    return answer_lower in avoid_list
 
 def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
     """Generate character with complete duplicate prevention and AI-driven obscurity evaluation."""
@@ -561,21 +558,29 @@ def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
     all_used_characters = get_all_used_characters()
     logger.info(f"Avoiding {len(all_used_characters)} previously used characters")
 
-    for attempt in range(5):  # More attempts since we have stricter rules
+    # Track failure reasons for better debugging
+    failure_reasons = {"duplicate": 0, "too_obscure": 0, "other_error": 0}
+
+    for attempt in range(15):  # Increased from 5 to 15 attempts for better success rate
         try:
             character_data = generate_daily_character(all_used_characters, attempt + 1)
 
             # Check for duplicates
             if is_duplicate(character_data, all_used_characters):
-                logger.info(f"Duplicate detected: {character_data['answer']}, retrying...")
+                failure_reasons["duplicate"] += 1
+                logger.info(f"Attempt {attempt + 1}/15: Duplicate detected: {character_data['answer']}")
                 continue
 
-            # AI evaluation
+            # AI evaluation with progressive leniency
             evaluation = evaluate_character_obscurity(character_data)
 
-            if not evaluation["is_too_obscure"]:
-                logger.info(f"Character approved: {character_data['answer']} "
-                           f"(Score: {evaluation['familiarity_score']}/10)")
+            # Progressive threshold: start strict (7+), relax to 5+ after 10 attempts
+            min_score = 7 if attempt < 10 else 5
+
+            # Accept if not too obscure OR if familiarity score meets progressive threshold
+            if not evaluation["is_too_obscure"] or evaluation["familiarity_score"] >= min_score:
+                logger.info(f"Character approved on attempt {attempt + 1}/15: {character_data['answer']} "
+                           f"(Score: {evaluation['familiarity_score']}/10, Threshold: {min_score})")
 
                 # Get reliable image URL using multi-source fallback
                 gpt_image_url = character_data.get("image_url")
@@ -587,13 +592,23 @@ def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
 
                 return character_data
             else:
-                logger.info(f"Character too obscure: {character_data['answer']}, retrying...")
+                failure_reasons["too_obscure"] += 1
+                logger.info(f"Attempt {attempt + 1}/15: Character too obscure: {character_data['answer']} "
+                           f"(Score: {evaluation['familiarity_score']}/10, Threshold: {min_score}, "
+                           f"Reason: {evaluation.get('reasoning', 'N/A')})")
 
         except Exception as e:
-            logger.warning(f"Attempt {attempt + 1} failed: {e}")
+            failure_reasons["other_error"] += 1
+            logger.warning(f"Attempt {attempt + 1}/15 failed with error: {e}")
 
-    # If all attempts fail, raise error rather than accepting duplicates
-    raise CharacterGenerationError("Could not generate unique, appropriate character after 5 attempts")
+    # If all attempts fail, raise error with detailed diagnostics
+    error_msg = (f"Could not generate unique, appropriate character after 15 attempts. "
+                f"Failures: {failure_reasons['duplicate']} duplicates, "
+                f"{failure_reasons['too_obscure']} too obscure, "
+                f"{failure_reasons['other_error']} errors. "
+                f"Total characters in avoid list: {len(all_used_characters)}")
+    logger.error(error_msg)
+    raise CharacterGenerationError(error_msg)
 
 
 def test_generation() -> Dict[str, any]:

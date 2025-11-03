@@ -439,10 +439,11 @@ def post_guess(g: GuessIn, request: Request):
         if not p:
             raise HTTPException(404, f"No puzzle found for date {date_str}")
         norm = g.guess.strip().lower()
-        answers = [p.answer] + p.aliases  # Keep original case for matching
+        # Only check main answer - aliases no longer used (fuzzy matching handles variations)
+        answers = [p.answer]
 
         logger.info(f"Processing guess: '{g.guess}' (normalized: '{norm}')")
-        logger.info(f"Checking against {len(answers)} possible answers")
+        logger.info(f"Checking against answer: {p.answer}")
         logger.info(f"Revealed count from frontend: {g.revealed}, Total hints available: {len(p.hints)}")
 
         # First try exact match (case-insensitive)

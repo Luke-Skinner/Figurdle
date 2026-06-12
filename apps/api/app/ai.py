@@ -159,6 +159,46 @@ def get_all_used_characters() -> List[str]:
 
         return list(set(characters))  # Remove duplicates
 
+def get_oldest_reusable_character() -> Optional[Dict[str, any]]:
+    """
+    Get the oldest used character that can be reused for cycling.
+    Returns the character data from the original puzzle, or None if no characters exist.
+    """
+    from .db import SessionLocal
+    from .models import Puzzle, UsedCharacter
+
+    with SessionLocal() as db:
+        # Find the oldest UsedCharacter by puzzle_date
+        oldest_used = db.query(UsedCharacter).order_by(UsedCharacter.puzzle_date.asc()).first()
+
+        if not oldest_used:
+            return None
+
+        # Get the original puzzle data for this character
+        original_puzzle = db.query(Puzzle).filter(
+            Puzzle.answer.ilike(oldest_used.character_name)
+        ).first()
+
+        if original_puzzle:
+            logger.info(f"Found oldest reusable character: {original_puzzle.answer} "
+                       f"(last used: {oldest_used.puzzle_date})")
+            return {
+                "answer": original_puzzle.answer,
+                "aliases": original_puzzle.aliases or [],
+                "hints": original_puzzle.hints,
+                "source_urls": original_puzzle.source_urls,
+                "image_url": original_puzzle.image_url,
+                "original_puzzle_date": oldest_used.puzzle_date
+            }
+
+        # If no puzzle found, return just the character name for regeneration
+        logger.info(f"Found oldest character name without puzzle: {oldest_used.character_name}")
+        return {
+            "answer": oldest_used.character_name.title(),
+            "original_puzzle_date": oldest_used.puzzle_date
+        }
+
+
 def record_used_character(character_data: Dict[str, any], puzzle_date) -> None:
     """Record character as used (no longer recording aliases - fuzzy matching handles variations)."""
     from .db import SessionLocal
@@ -230,6 +270,126 @@ def validate_hints_dont_reveal_answer(character_data: Dict[str, any]) -> bool:
                 return False
     
     return True
+
+
+def generate_hints_for_character(character_name: str) -> Dict[str, any]:
+    """
+    Generate fresh hints for a specific character (used when cycling/reusing characters).
+    Returns a dictionary with answer, hints, source_urls, image_url, and aliases.
+    """
+    json_template = '''{
+  "answer": "Full Name",
+  "hints": [
+    "Hint 1: Very broad historical context",
+    "Hint 2: Time period or geographical region",
+    "Hint 3: Field of expertise or major role",
+    "Hint 4: Specific major accomplishment",
+    "Hint 5: Nearly gives it away but requires connecting the dots"
+  ],
+  "source_urls": ["https://en.wikipedia.org/wiki/Character_Name"],
+  "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Character_Name.jpg"
+}'''
+
+    system_prompt_parts = [
+        'You are a game designer creating a puzzle for "Figurdle" - a Wordle-like game where players guess famous figures based on progressive hints.',
+        "",
+        f"Generate 5 progressive hints for this specific character: {character_name}",
+        "",
+        "Return your response as valid JSON with this exact structure:",
+        json_template,
+        "",
+        "CRITICAL RULES FOR HINTS:",
+        "- NEVER mention the person's name, nickname, or any part of their name in any hint",
+        "- NEVER mention titles that directly contain their name",
+        "- ALWAYS write hints in THIRD PERSON ONLY - use 'they', 'this person', 'this figure', etc.",
+        "- NEVER use first person ('I', 'my', 'me')",
+        "- Make hints progressively more specific but always avoid name reveals",
+        "- Hint 5 should be very specific but still require the player to make the connection",
+        "",
+        "IMAGE URL INSTRUCTIONS:",
+        "- Provide a working Wikipedia Commons image URL if possible",
+        "- Format: https://upload.wikimedia.org/wikipedia/commons/[hash]/[filename]",
+        "- If no image exists, use: https://via.placeholder.com/400x400.png?text=No+Image+Available"
+    ]
+
+    system_prompt = '\n'.join(system_prompt_parts)
+    user_prompt = f"Generate 5 progressive hints for {character_name}. Make the hints engaging and educational."
+
+    try:
+        logger.info(f"Generating fresh hints for recycled character: {character_name}")
+
+        openai_client = get_openai_client()
+
+        response = call_openai_with_retry(
+            openai_client,
+            model=settings.OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+
+        content = response.choices[0].message.content
+        logger.info(f"OpenAI response for {character_name}: {len(content)} characters")
+
+        try:
+            character_data = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse hints JSON for {character_name}: {e}")
+            raise CharacterGenerationError(f"OpenAI returned invalid JSON: {e}")
+
+        # Ensure answer matches the requested character
+        character_data["answer"] = character_name
+
+        # Set aliases to empty list
+        if "aliases" not in character_data:
+            character_data["aliases"] = []
+
+        # Validate hints
+        if not isinstance(character_data["hints"], list) or len(character_data["hints"]) != 5:
+            raise CharacterGenerationError("Must provide exactly 5 hints")
+
+        if not isinstance(character_data.get("source_urls", []), list):
+            character_data["source_urls"] = [f"https://en.wikipedia.org/wiki/{character_name.replace(' ', '_')}"]
+
+        # Validate hints don't reveal answer
+        if not validate_hints_dont_reveal_answer(character_data):
+            logger.warning(f"Generated hints for {character_name} reveal the answer, but proceeding anyway")
+
+        logger.info(f"Successfully generated fresh hints for: {character_name}")
+        return character_data
+
+    except Exception as e:
+        if isinstance(e, CharacterGenerationError):
+            raise
+        logger.error(f"Failed to generate hints for {character_name}: {e}")
+        raise CharacterGenerationError(f"Failed to generate hints: {e}")
+
+
+def update_used_character_date(character_name: str, new_date) -> None:
+    """Update the puzzle_date for a reused character."""
+    from .db import SessionLocal
+    from .models import UsedCharacter
+
+    with SessionLocal() as db:
+        try:
+            used_char = db.query(UsedCharacter).filter(
+                UsedCharacter.character_name == character_name.lower()
+            ).first()
+
+            if used_char:
+                old_date = used_char.puzzle_date
+                used_char.puzzle_date = new_date
+                db.commit()
+                logger.info(f"Updated {character_name} puzzle_date from {old_date} to {new_date}")
+            else:
+                logger.warning(f"Could not find UsedCharacter record for {character_name}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to update puzzle_date for {character_name}: {e}")
+
 
 def evaluate_character_obscurity(character_data: Dict[str, any]) -> Dict[str, any]:
     """
@@ -601,8 +761,52 @@ def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
             failure_reasons["other_error"] += 1
             logger.warning(f"Attempt {attempt + 1}/15 failed with error: {e}")
 
-    # If all attempts fail, raise error with detailed diagnostics
-    error_msg = (f"Could not generate unique, appropriate character after 15 attempts. "
+    # If all attempts fail, try cycling (reuse oldest character)
+    logger.info(f"All 15 attempts failed. Attempting to cycle oldest character. "
+               f"Failures: {failure_reasons['duplicate']} duplicates, "
+               f"{failure_reasons['too_obscure']} too obscure, "
+               f"{failure_reasons['other_error']} errors.")
+
+    # Only cycle if failures are primarily due to duplicates
+    if failure_reasons["duplicate"] > 0:
+        oldest_character = get_oldest_reusable_character()
+
+        if oldest_character:
+            character_name = oldest_character["answer"]
+            logger.info(f"Cycling character: {character_name} "
+                       f"(originally used: {oldest_character.get('original_puzzle_date', 'unknown')})")
+
+            try:
+                # Generate fresh hints for this character
+                character_data = generate_hints_for_character(character_name)
+
+                # Get reliable image URL
+                gpt_image_url = character_data.get("image_url")
+
+                # Try to use original image if available
+                if oldest_character.get("image_url"):
+                    if verify_image_url(oldest_character["image_url"]):
+                        character_data["image_url"] = oldest_character["image_url"]
+                    else:
+                        character_data["image_url"] = get_character_image_url(
+                            character_name, gpt_image_url
+                        )
+                else:
+                    character_data["image_url"] = get_character_image_url(
+                        character_name, gpt_image_url
+                    )
+
+                # Mark as cycled so caller knows not to record as new
+                character_data["is_cycled"] = True
+
+                logger.info(f"Successfully cycled character: {character_name} with fresh hints")
+                return character_data
+
+            except Exception as e:
+                logger.error(f"Failed to cycle character {character_name}: {e}")
+
+    # If cycling also fails, raise error
+    error_msg = (f"Could not generate or cycle character after 15 attempts. "
                 f"Failures: {failure_reasons['duplicate']} duplicates, "
                 f"{failure_reasons['too_obscure']} too obscure, "
                 f"{failure_reasons['other_error']} errors. "

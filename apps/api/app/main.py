@@ -4,7 +4,7 @@ from .db import Base, engine, SessionLocal
 from .models import Puzzle, UserSession
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
-from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, record_used_character
+from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, record_used_character, update_used_character_date
 from datetime import datetime, date
 import pytz, hmac, hashlib, json, secrets
 import logging
@@ -240,10 +240,15 @@ def rotate(admin_key: str = Depends(verify_admin_key)):
             db.add(new_puzzle)
             db.commit()
 
-            # Record character as used to prevent future duplicates
-            record_used_character(character_data, today_pst())
-
-            logger.info(f"Successfully created new puzzle: {character_data['answer']}")
+            # Handle character tracking based on whether it's new or cycled
+            if character_data.get("is_cycled"):
+                # Update existing record's date for cycled character
+                update_used_character_date(character_data["answer"], today_pst())
+                logger.info(f"Successfully created puzzle with cycled character: {character_data['answer']}")
+            else:
+                # Record new character to prevent future duplicates
+                record_used_character(character_data, today_pst())
+                logger.info(f"Successfully created new puzzle: {character_data['answer']}")
             return {
                 "status": "created",
                 "character": character_data["answer"],
@@ -286,10 +291,13 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
                 db.add(p)
                 db.commit()
 
-                # Record character as used to prevent future duplicates
-                record_used_character(character_data, today_pst())
-
-                logger.info(f"Auto-generated puzzle: {character_data['answer']}")
+                # Handle character tracking based on whether it's new or cycled
+                if character_data.get("is_cycled"):
+                    update_used_character_date(character_data["answer"], today_pst())
+                    logger.info(f"Auto-generated puzzle with cycled character: {character_data['answer']}")
+                else:
+                    record_used_character(character_data, today_pst())
+                    logger.info(f"Auto-generated puzzle: {character_data['answer']}")
 
             except CharacterGenerationError as e:
                 logger.error(f"Auto-generation failed: {e}")

@@ -12,9 +12,9 @@ export default function ThemeToggle({ className = "" }: ThemeToggleProps) {
     <button
       onClick={toggleTheme}
       className={`inline-flex items-center justify-center w-12 h-12 rounded-full
-                 transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2
+                 transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2
                  ${isDark
-                   ? 'bg-gray-800 hover:bg-gray-700 focus:ring-yellow-400 text-yellow-400'
+                   ? 'bg-gray-800 hover:bg-gray-700 focus:ring-amber-400 text-amber-400'
                    : 'bg-gray-100 hover:bg-gray-200 focus:ring-amber-500 text-gray-700'
                  } ${className}`}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
@@ -23,7 +23,7 @@ export default function ThemeToggle({ className = "" }: ThemeToggleProps) {
       <div className="relative w-6 h-6">
         {/* Sun Icon (Light Mode) */}
         <svg
-          className={`absolute inset-0 w-6 h-6 transition-all duration-500 transform
+          className={`absolute inset-0 w-6 h-6 transition-all duration-300 transform
                      ${isDark ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`}
           fill="none"
           stroke="currentColor"
@@ -39,7 +39,7 @@ export default function ThemeToggle({ className = "" }: ThemeToggleProps) {
 
         {/* Moon Icon (Dark Mode) */}
         <svg
-          className={`absolute inset-0 w-6 h-6 transition-all duration-500 transform
+          className={`absolute inset-0 w-6 h-6 transition-all duration-300 transform
                      ${isDark ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'}`}
           fill="none"
           stroke="currentColor"
@@ -53,12 +53,6 @@ export default function ThemeToggle({ className = "" }: ThemeToggleProps) {
           />
         </svg>
       </div>
-
-      {/* Ripple Effect */}
-      <div className={`absolute inset-0 rounded-full transition-all duration-300 scale-0
-                      ${isDark ? 'bg-yellow-400' : 'bg-amber-500'}
-                      group-active:scale-75 opacity-20`}
-      />
     </button>
   );
 }

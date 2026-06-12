@@ -39,10 +39,10 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
         : 'bg-white/80 border-gray-200'
       }`}>
       {/* Header */}
-      <div className={`bg-gradient-to-r px-6 py-4 border-b
+      <div className={`px-6 py-4 border-b
         ${isDark
-          ? 'from-amber-900/50 to-yellow-900/50 border-gray-700'
-          : 'from-amber-50 to-yellow-50 border-gray-200'
+          ? 'bg-amber-900/40 border-gray-700'
+          : 'bg-amber-50 border-gray-200'
         }`}>
         <div className="flex items-center justify-between">
           <h3 className={`text-lg font-semibold flex items-center gap-2
@@ -78,11 +78,11 @@ export default function HintsList({ hints, className = "", lastGuessResult }: Hi
                 }`}
               style={{ transitionDelay: `${index * 50}ms` }}
             >
-              <div className={`flex items-start gap-4 p-4 bg-gradient-to-r rounded-xl border
+              <div className={`flex items-start gap-4 p-4 rounded-xl border
                             hover:shadow-md transition-shadow duration-200
                             ${isDark
-                              ? 'from-gray-700/50 to-amber-800/50 border-gray-600'
-                              : 'from-gray-50 to-amber-50 border-gray-200'
+                              ? 'bg-gray-700/50 border-gray-600'
+                              : 'bg-gray-50 border-gray-200'
                             }`}>
                 {/* Hint Number */}
                 <div className={`flex-shrink-0 w-8 h-8 text-white rounded-full

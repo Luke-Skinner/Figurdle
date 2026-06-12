@@ -70,15 +70,21 @@ export default function PuzzleInfo({
 
       {/* Completion Status Badge */}
       {sessionStatus?.has_played && !sessionStatus.can_play && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className={`mt-4 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
           <div className="flex items-center justify-center">
             <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
               ${sessionStatus.result === 'won'
-                ? 'bg-green-100 text-green-800 border border-green-200'
-                : 'bg-red-100 text-red-800 border border-red-200'
+                ? isDark
+                  ? 'bg-green-900/50 text-green-300 border border-green-700'
+                  : 'bg-green-100 text-green-800 border border-green-200'
+                : isDark
+                  ? 'bg-red-900/50 text-red-300 border border-red-700'
+                  : 'bg-red-100 text-red-800 border border-red-200'
               }`}
             >
-              <svg className={`w-4 h-4 mr-2 ${sessionStatus.result === 'won' ? 'text-green-500' : 'text-red-500'}`}
+              <svg className={`w-4 h-4 mr-2 ${sessionStatus.result === 'won'
+                ? isDark ? 'text-green-400' : 'text-green-500'
+                : isDark ? 'text-red-400' : 'text-red-500'}`}
                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {sessionStatus.result === 'won' ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}

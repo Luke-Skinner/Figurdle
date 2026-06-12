@@ -124,7 +124,7 @@ export default function PuzzleCalendarModal({
                     key={puzzle.puzzle_date}
                     onClick={() => handleSelectDate(puzzle.puzzle_date)}
                     className={`p-4 rounded-xl border-2 transition-all duration-200
-                      hover:scale-105 focus:outline-none focus:ring-4
+                      hover:scale-[1.02] focus:outline-none focus:ring-4
                       ${currentDate === puzzle.puzzle_date
                         ? isDark
                           ? 'bg-amber-900/50 border-amber-500 text-amber-200'

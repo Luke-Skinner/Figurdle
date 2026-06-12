@@ -119,8 +119,8 @@ export default function GuessForm({
             className={`flex-1 py-4 px-6 rounded-xl font-medium text-lg transition-all duration-200
               transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
               ${disabled || !guess.trim() || loading || isVictorious || isGameOver
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed hover:scale-100'
-                : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white shadow-lg hover:shadow-xl focus:ring-amber-500/30'
+                ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed hover:scale-100'
+                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg hover:shadow-xl focus:ring-amber-500/30'
               }
             `}
           >
@@ -171,7 +171,7 @@ export default function GuessForm({
         {/* Hint Text */}
         {!disabled && !isVictorious && !isGameOver && (
           <div className="text-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Try full name of figures
             </p>
           </div>

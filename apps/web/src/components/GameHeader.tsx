@@ -25,7 +25,7 @@ export default function GameHeader({ className = "", onSelectDate, currentDate }
           <button
             onClick={() => setShowCalendar(true)}
             className={`inline-flex items-center justify-center w-12 h-12 rounded-full
-                       transition-all duration-300 hover:scale-110 focus:outline-none focus:ring-2
+                       transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2
                        ${isDark
                          ? 'bg-gray-800 hover:bg-gray-700 focus:ring-amber-400 text-amber-400'
                          : 'bg-gray-100 hover:bg-gray-200 focus:ring-amber-500 text-gray-700'
@@ -43,12 +43,8 @@ export default function GameHeader({ className = "", onSelectDate, currentDate }
         </div>
 
         <div className="space-y-2">
-          <h1 className={`text-4xl md:text-5xl font-bold bg-gradient-to-r bg-clip-text text-transparent
-            leading-tight pb-2
-            ${isDark
-              ? 'from-amber-400 via-amber-600 to-amber-800'
-              : 'from-amber-900 via-amber-700 to-amber-500'
-            }`}>
+          <h1 className={`text-4xl md:text-5xl font-bold leading-tight pb-2
+            ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
             Figurdle
           </h1>
           <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>

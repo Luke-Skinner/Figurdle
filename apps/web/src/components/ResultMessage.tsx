@@ -41,8 +41,8 @@ export default function ResultMessage({
     >
       <div className={`rounded-2xl border-2 p-6 shadow-lg
         ${isCorrect
-          ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
-          : 'bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200'
+          ? 'bg-green-50 border-green-200'
+          : 'bg-orange-50 border-orange-200'
         }`}
       >
         {/* Header with Icon */}

@@ -34,15 +34,16 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto
-                      transform transition-all duration-300 scale-100 opacity-100">
+      <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto
+                      transform transition-all duration-300 scale-100 opacity-100 border border-gray-200 dark:border-gray-700">
         <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">How to Play Figurdle</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">How to Play Figurdle</h2>
             <button
               onClick={onClose}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full
+                       hover:bg-gray-100 dark:hover:bg-gray-700
                        transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,9 +53,9 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
           </div>
 
           {/* Rules Content */}
-          <div className="space-y-4 text-gray-700">
+          <div className="space-y-4 text-gray-700 dark:text-gray-300">
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900">Objective</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Objective</h3>
               <p>
                 Guess the famous figure of the day! This could be anyone from history, science,
                 entertainment, sports, politics, literature, art, technology, or any other field.
@@ -62,7 +63,7 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900">How it Works</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">How it Works</h3>
               <ul className="space-y-2 list-disc list-inside">
                 <li>Each day features a new famous figure to guess</li>
                 <li>Submit your guesses to reveal progressive hints</li>
@@ -73,18 +74,18 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-gray-900">Tips</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Tips</h3>
               <ul className="space-y-2 list-disc list-inside">
                 <li>Consider both first names and last names</li>
                 <li>Try different variations and nicknames</li>
                 <li>The figure could be from any time period or field</li>
-                <li>If stuck try with friends (You do not have any-👥)</li>
+                <li>If stuck try with friends (You do not have any)</li>
               </ul>
             </div>
 
-            <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
-              <h4 className="font-semibold text-amber-900 mb-2">Daily Challenge</h4>
-              <p className="text-amber-800 text-sm">
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-700">
+              <h4 className="font-semibold text-amber-900 dark:text-amber-300 mb-2">Daily Challenge</h4>
+              <p className="text-amber-800 dark:text-amber-400 text-sm">
                 Each puzzle is designed to be challenging but fair. Come back every day
                 for a new figure to discover.
               </p>
@@ -92,14 +93,14 @@ export default function RulesModal({ isOpen, onClose }: RulesModalProps) {
           </div>
 
           {/* Footer */}
-          <div className="pt-4 border-t border-gray-200">
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={onClose}
-              className="w-full px-4 py-3 bg-amber-600 text-white font-medium rounded-xl
-                       hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500
-                       transition-colors duration-200"
+              className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-xl
+                       focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2
+                       dark:focus:ring-offset-gray-800 transition-colors duration-200"
             >
-              Enough yapping!
+              Got it!
             </button>
           </div>
         </div>

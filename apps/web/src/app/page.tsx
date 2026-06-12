@@ -315,15 +315,12 @@ export default function Home() {
   if (loading) {
     return (
       <div className={`min-h-screen flex items-center justify-center
-        ${isDark
-          ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900'
-          : 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50'
-        }`}>
+        ${isDark ? 'bg-gray-900' : 'bg-amber-50'}`}>
         <div className="text-center space-y-4">
           <div className={`animate-spin rounded-full h-12 w-12 border-4 border-t-transparent mx-auto
             ${isDark ? 'border-amber-400' : 'border-amber-600'}`}></div>
-          <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            Loading today&apos;s puzzle...
+          <p className={`text-lg font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+            Loading puzzle...
           </p>
         </div>
       </div>
@@ -333,10 +330,7 @@ export default function Home() {
   if (error) {
     return (
       <div className={`min-h-screen flex items-center justify-center p-6
-        ${isDark
-          ? 'bg-gradient-to-br from-red-900 via-pink-900 to-red-900'
-          : 'bg-gradient-to-br from-red-50 via-pink-50 to-red-50'
-        }`}>
+        ${isDark ? 'bg-gray-900' : 'bg-red-50'}`}>
         <div className={`rounded-2xl shadow-2xl p-8 max-w-md w-full text-center
           ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
           <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4

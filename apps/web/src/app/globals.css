@@ -3,25 +3,99 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Semantic color tokens - Light mode */
+  --color-background: #ffffff;
+  --color-background-elevated: #f9fafb;
+  --color-foreground: #111827;
+  --color-foreground-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+
+  /* Brand colors */
+  --color-brand: #f59e0b;
+  --color-brand-hover: #d97706;
+  --color-brand-muted: #fef3c7;
+
+  /* Feedback colors */
+  --color-success: #10b981;
+  --color-error: #ef4444;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.dark {
+  --color-background: #111827;
+  --color-background-elevated: #1f2937;
+  --color-foreground: #f9fafb;
+  --color-foreground-muted: #9ca3af;
+  --color-border: #374151;
+  --color-border-strong: #4b5563;
+
+  --color-brand: #fbbf24;
+  --color-brand-hover: #f59e0b;
+  --color-brand-muted: #78350f;
+
+  --color-success: #34d399;
+  --color-error: #f87171;
+}
+
+@layer base {
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Consistent focus states for accessibility */
+  *:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Remove default focus ring, rely on focus-visible */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Selection color */
+  ::selection {
+    background-color: var(--color-brand-muted);
+    color: var(--color-foreground);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Card component base */
+  .card {
+    @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm;
+  }
+
+  /* Button base */
+  .btn-primary {
+    @apply bg-amber-500 hover:bg-amber-600 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium px-6 py-3 rounded-lg transition-colors duration-200;
+  }
 }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }

@@ -11,15 +11,15 @@ export default function AlreadyPlayedMessage({ sessionStatus, className = "" }: 
   return (
     <div className={`rounded-2xl border-2 p-6 text-center space-y-4 transition-all duration-300
       ${isVictory
-        ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
-        : 'bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200'
+        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+        : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
       } ${className}`}
     >
       {/* Icon */}
       <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center
-        ${isVictory ? 'bg-green-100' : 'bg-amber-100'}`}
+        ${isVictory ? 'bg-green-100 dark:bg-green-800/30' : 'bg-amber-100 dark:bg-amber-800/30'}`}
       >
-        <svg className={`w-8 h-8 ${isVictory ? 'text-green-600' : 'text-amber-600'}`}
+        <svg className={`w-8 h-8 ${isVictory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}
              fill="none" stroke="currentColor" viewBox="0 0 24 24">
           {isVictory ? (
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -33,10 +33,10 @@ export default function AlreadyPlayedMessage({ sessionStatus, className = "" }: 
 
       {/* Main Message */}
       <div className="space-y-2">
-        <h2 className={`text-2xl font-bold ${isVictory ? 'text-green-800' : 'text-amber-800'}`}>
+        <h2 className={`text-2xl font-bold ${isVictory ? 'text-green-800 dark:text-green-300' : 'text-amber-800 dark:text-amber-300'}`}>
           You&apos;ve already played today!
         </h2>
-        <p className={`text-lg ${isVictory ? 'text-green-700' : 'text-amber-700'}`}>
+        <p className={`text-lg ${isVictory ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
           Result: <span className="font-semibold">
             {isVictory ? 'Victory' : 'Lost'}
           </span>
@@ -44,26 +44,26 @@ export default function AlreadyPlayedMessage({ sessionStatus, className = "" }: 
       </div>
 
       {/* Statistics */}
-      <div className={`bg-white/70 backdrop-blur-sm rounded-xl p-4 space-y-2 border
-        ${isVictory ? 'border-green-200' : 'border-amber-200'}`}
+      <div className={`bg-white/70 dark:bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 space-y-2 border
+        ${isVictory ? 'border-green-200 dark:border-green-700' : 'border-amber-200 dark:border-amber-700'}`}
       >
-        <div className={`text-sm font-medium ${isVictory ? 'text-green-800' : 'text-amber-800'}`}>
+        <div className={`text-sm font-medium ${isVictory ? 'text-green-800 dark:text-green-300' : 'text-amber-800 dark:text-amber-300'}`}>
           Your Performance
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">
-            <div className={`text-2xl font-bold ${isVictory ? 'text-green-600' : 'text-amber-600'}`}>
+            <div className={`text-2xl font-bold ${isVictory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
               {sessionStatus.attempts}
             </div>
-            <div className={`text-xs ${isVictory ? 'text-green-600' : 'text-amber-600'} uppercase tracking-wide`}>
+            <div className={`text-xs ${isVictory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} uppercase tracking-wide`}>
               Attempts
             </div>
           </div>
           <div className="text-center">
-            <div className={`text-2xl font-bold ${isVictory ? 'text-green-600' : 'text-amber-600'}`}>
+            <div className={`text-2xl font-bold ${isVictory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
               {sessionStatus.hints_revealed}
             </div>
-            <div className={`text-xs ${isVictory ? 'text-green-600' : 'text-amber-600'} uppercase tracking-wide`}>
+            <div className={`text-xs ${isVictory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'} uppercase tracking-wide`}>
               Hints Used
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function AlreadyPlayedMessage({ sessionStatus, className = "" }: 
 
       {/* Completion Time */}
       {sessionStatus.completed_at && (
-        <div className={`text-sm ${isVictory ? 'text-green-600' : 'text-amber-600'}`}>
+        <div className={`text-sm ${isVictory ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
           Completed at {new Date(sessionStatus.completed_at).toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
@@ -82,11 +82,11 @@ export default function AlreadyPlayedMessage({ sessionStatus, className = "" }: 
       )}
 
       {/* Call to Action */}
-      <div className={`pt-2 border-t ${isVictory ? 'border-green-200' : 'border-amber-200'}`}>
-        <p className={`text-sm font-medium ${isVictory ? 'text-green-700' : 'text-amber-700'}`}>
+      <div className={`pt-2 border-t ${isVictory ? 'border-green-200 dark:border-green-700' : 'border-amber-200 dark:border-amber-700'}`}>
+        <p className={`text-sm font-medium ${isVictory ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>
           Come back tomorrow for a new challenge!
         </p>
-        <div className="mt-2 text-xs text-gray-500">
+        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
           New puzzles available daily at 12:01 AM PST
         </div>
       </div>

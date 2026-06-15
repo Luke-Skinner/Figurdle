@@ -36,9 +36,7 @@ class Settings(BaseSettings):
         if self.ENVIRONMENT == "production" and self.INSTANCE_CONNECTION_NAME:
             # Cloud SQL connection for production
             db_url = f"postgresql+psycopg2://{self.DB_USER}:{self.DB_PASS}@/{self.DB_NAME}?host=/cloudsql/{self.INSTANCE_CONNECTION_NAME}"
-            print(f"Using database URL: {db_url}")
             return db_url
-        print(f"Using database URL: {self.DATABASE_URL}")
         return self.DATABASE_URL
 
 settings = Settings()

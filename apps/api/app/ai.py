@@ -146,18 +146,29 @@ def get_all_used_characters() -> List[str]:
     from .models import Puzzle, UsedCharacter
 
     with SessionLocal() as db:
+        # Force fresh read from database
+        db.expire_all()
+
         characters = []
 
         # Get from puzzles table (main answer only - aliases no longer used)
         puzzles = db.query(Puzzle).all()
-        for puzzle in puzzles:
-            characters.append(puzzle.answer.lower())
+        puzzle_chars = [puzzle.answer.lower() for puzzle in puzzles]
+        characters.extend(puzzle_chars)
 
         # Get from used_characters table
         used_chars = db.query(UsedCharacter).all()
-        characters.extend([char.character_name.lower() for char in used_chars])
+        used_char_names = [char.character_name.lower() for char in used_chars]
+        characters.extend(used_char_names)
 
-        return list(set(characters))  # Remove duplicates
+        unique_chars = list(set(characters))
+
+        # Debug logging
+        print(f"[DUPLICATE CHECK] Puzzle table characters: {puzzle_chars}")
+        print(f"[DUPLICATE CHECK] UsedCharacter table: {used_char_names}")
+        print(f"[DUPLICATE CHECK] Total unique to avoid: {len(unique_chars)}")
+
+        return unique_chars
 
 def get_oldest_reusable_character() -> Optional[Dict[str, any]]:
     """
@@ -203,24 +214,39 @@ def record_used_character(character_data: Dict[str, any], puzzle_date) -> None:
     """Record character as used (no longer recording aliases - fuzzy matching handles variations)."""
     from .db import SessionLocal
     from .models import UsedCharacter
+    from sqlalchemy import text
     import logging
 
     logger = logging.getLogger(__name__)
+    char_name = character_data["answer"].lower()
 
     with SessionLocal() as db:
         try:
-            # Record only the main answer (normalized to lowercase)
-            main_char = UsedCharacter(
-                character_name=character_data["answer"].lower(),
-                puzzle_date=puzzle_date
-            )
-            db.add(main_char)
-            db.commit()
-            logger.info(f"Recorded {character_data['answer']} as used")
+            # Check if character already exists
+            existing = db.query(UsedCharacter).filter(
+                UsedCharacter.character_name == char_name
+            ).first()
+
+            if existing:
+                # Update existing record's date
+                existing.puzzle_date = puzzle_date
+                db.commit()
+                print(f"[RECORD] Updated existing character '{char_name}' with new date {puzzle_date}")
+                logger.info(f"Updated existing character {character_data['answer']} to date {puzzle_date}")
+            else:
+                # Insert new record
+                main_char = UsedCharacter(
+                    character_name=char_name,
+                    puzzle_date=puzzle_date
+                )
+                db.add(main_char)
+                db.commit()
+                print(f"[RECORD] Recorded new character '{char_name}' with date {puzzle_date}")
+                logger.info(f"Recorded {character_data['answer']} as used")
 
         except Exception as e:
             db.rollback()
-            # Don't fail the puzzle creation if recording fails
+            print(f"[RECORD ERROR] Failed to record character '{char_name}': {e}")
             logger.warning(f"Failed to record used character {character_data['answer']}: {e}")
 
 def get_recent_characters(days_back: int = 90) -> List[str]:
@@ -707,8 +733,11 @@ def is_duplicate(character_data: Dict[str, any], avoid_list: List[str]) -> bool:
     """Check if generated character is in the avoid list (no longer checks aliases)."""
     answer_lower = character_data["answer"].lower()
 
+    is_dup = answer_lower in avoid_list
+    print(f"[DUPLICATE CHECK] Checking '{answer_lower}' against {len(avoid_list)} characters: {'DUPLICATE' if is_dup else 'OK'}")
+
     # Only check the main answer since we no longer use aliases
-    return answer_lower in avoid_list
+    return is_dup
 
 def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
     """Generate character with complete duplicate prevention and AI-driven obscurity evaluation."""

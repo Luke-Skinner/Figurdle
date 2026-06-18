@@ -173,17 +173,38 @@ def get_all_used_characters() -> List[str]:
 def get_oldest_reusable_character() -> Optional[Dict[str, any]]:
     """
     Get the oldest used character that can be reused for cycling.
+    Excludes characters used in puzzles within the last 30 days.
     Returns the character data from the original puzzle, or None if no characters exist.
     """
     from .db import SessionLocal
     from .models import Puzzle, UsedCharacter
+    from datetime import date, timedelta
 
     with SessionLocal() as db:
-        # Find the oldest UsedCharacter by puzzle_date
-        oldest_used = db.query(UsedCharacter).order_by(UsedCharacter.puzzle_date.asc()).first()
+        # Get characters used in puzzles in the last 30 days (to exclude)
+        thirty_days_ago = date.today() - timedelta(days=30)
+        recent_puzzles = db.query(Puzzle).filter(
+            Puzzle.puzzle_date >= thirty_days_ago
+        ).all()
+        recent_characters = {p.answer.lower() for p in recent_puzzles}
+
+        print(f"[CYCLING] Excluding {len(recent_characters)} recently used characters from last 30 days")
+
+        # Get unique character names from UsedCharacter, excluding recent ones
+        all_used = db.query(UsedCharacter).order_by(UsedCharacter.puzzle_date.asc()).all()
+
+        # Find oldest character NOT in recent puzzles
+        oldest_used = None
+        for used_char in all_used:
+            if used_char.character_name.lower() not in recent_characters:
+                oldest_used = used_char
+                break
 
         if not oldest_used:
+            print(f"[CYCLING] No reusable characters found (all {len(all_used)} characters used in last 30 days)")
             return None
+
+        print(f"[CYCLING] Selected '{oldest_used.character_name}' (puzzle_date: {oldest_used.puzzle_date})")
 
         # Get the original puzzle data for this character
         original_puzzle = db.query(Puzzle).filter(
@@ -395,21 +416,24 @@ def generate_hints_for_character(character_name: str) -> Dict[str, any]:
 
 
 def update_used_character_date(character_name: str, new_date) -> None:
-    """Update the puzzle_date for a reused character."""
+    """Update the puzzle_date for a reused character (updates ALL matching entries)."""
     from .db import SessionLocal
     from .models import UsedCharacter
 
     with SessionLocal() as db:
         try:
-            used_char = db.query(UsedCharacter).filter(
+            # Update ALL matching entries (in case of duplicates)
+            matching_chars = db.query(UsedCharacter).filter(
                 UsedCharacter.character_name == character_name.lower()
-            ).first()
+            ).all()
 
-            if used_char:
-                old_date = used_char.puzzle_date
-                used_char.puzzle_date = new_date
+            if matching_chars:
+                count = len(matching_chars)
+                for used_char in matching_chars:
+                    used_char.puzzle_date = new_date
                 db.commit()
-                logger.info(f"Updated {character_name} puzzle_date from {old_date} to {new_date}")
+                logger.info(f"Updated {count} entries for {character_name} to puzzle_date {new_date}")
+                print(f"[CYCLING] Updated {count} UsedCharacter entries for '{character_name}' to {new_date}")
             else:
                 logger.warning(f"Could not find UsedCharacter record for {character_name}")
         except Exception as e:

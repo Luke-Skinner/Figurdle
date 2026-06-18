@@ -25,7 +25,7 @@ Make sure your FastAPI backend is running on port 8080 for local development, or
 - **Daily Famous Figures**: AI-generated puzzles featuring any famous person with OpenAI GPT-4o-mini
 - **Picture Accompaniment**: Character images displayed on game completion with Wikipedia API integration
 - **Skip Button**: Optional hint reveal functionality for strategic gameplay
-- **Complete No-Repeats System**: Database tracking ensures no character appears twice
+- **Duplicate Prevention**: Database tracking with 30-day cycling exclusion ensures character variety
 - **Daily Play Restriction**: Cookie-based session system enforces one play per day
 - **Automated Daily Updates**: New puzzles automatically generated at 12:01 AM PST
 - **Progressive Hint System**: 5 hints maximum revealed as you make incorrect guesses (reduced difficulty)

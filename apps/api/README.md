@@ -6,7 +6,7 @@ FastAPI backend for the daily historical character guessing game.
 
 - **AI Character Generation**: Uses OpenAI GPT-4o-mini to generate daily famous figures with hints
 - **Wikipedia API Integration**: Reliable character image sourcing with multi-source fallback strategy
-- **Complete No-Repeats System**: UsedCharacter model ensures no duplicate puzzles ever
+- **Duplicate Prevention System**: UsedCharacter model with UNIQUE constraint, plus cycling fallback that excludes characters used in last 30 days
 - **Daily Play Restriction**: Cookie-based session management enforces one play per day per user
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hint System**: 5 hints maximum revealed as players make incorrect guesses (reduced difficulty)
@@ -130,8 +130,8 @@ FastAPI backend for the daily historical character guessing game.
 
 ### UsedCharacter Table
 - `id`: Primary key
-- `character_name`: Character name (unique constraint)
-- `puzzle_date`: Date when character was used
+- `character_name`: Character name (UNIQUE constraint enforced at database level)
+- `puzzle_date`: Date when character was last used (updated on cycling)
 - `created_at`: Timestamp of record creation
 
 ### UserSession Table

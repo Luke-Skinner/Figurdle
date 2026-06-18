@@ -81,7 +81,7 @@ For production deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 - **AI-Generated Characters**: Daily famous figures created with OpenAI GPT-4o-mini
 - **Past Puzzles Archive**: Browse and play any previous day's puzzle via calendar modal - never miss a puzzle!
 - **Complete Hint Reveal**: See all 5 hints when game ends, regardless of when you solved it
-- **No Character Repeats**: Complete duplicate prevention system ensures every puzzle is unique
+- **No Character Repeats**: Duplicate prevention with UNIQUE constraint and 30-day cycling exclusion ensures variety
 - **Automated Daily Puzzles**: Google Cloud Scheduler automatically generates new puzzles at 12:01 AM PST
 - **Progressive Hints**: 5 hints maximum revealed as you make incorrect guesses
 - **Smart Attempt Tracking**: 6 attempts maximum with fraction display (1/6, 2/6, etc.)

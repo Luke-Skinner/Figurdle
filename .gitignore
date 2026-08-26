@@ -69,3 +69,9 @@ CLAUDE.md
 # Additional API virtual environments
 apps/api/venv/
 apps/api/.venv/
+
+# Agent skills (content restored via: npx skills experimental_install)
+.agents/
+
+# Windows stray null-device redirect artifact
+nul

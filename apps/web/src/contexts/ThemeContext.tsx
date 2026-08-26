@@ -15,25 +15,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark'); // Default to dark mode
   const [mounted, setMounted] = useState(false);
 
-  // Check for saved theme preference or default to dark
+  // Resolve the saved theme and apply the document class in the same pass that
+  // flips `mounted`, so the class is on <html> before any child renders.
+  // The .dark class reselects the palette tokens in globals.css, which every
+  // component styles through, so no component needs a dark: variant.
   useEffect(() => {
     const savedTheme = localStorage.getItem('figurdle-theme') as Theme;
-    if (savedTheme) {
-      setTheme(savedTheme);
-    }
+    const initialTheme = savedTheme ?? 'dark';
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+    setTheme(initialTheme);
     setMounted(true);
   }, []);
 
-  // Update localStorage when theme changes
+  // Persist and apply later theme changes
   useEffect(() => {
     if (mounted) {
       localStorage.setItem('figurdle-theme', theme);
-      // Update document class for global styles
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      document.documentElement.classList.toggle('dark', theme === 'dark');
     }
   }, [theme, mounted]);
 

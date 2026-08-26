@@ -3,7 +3,6 @@ import { useState } from "react";
 import RulesModal from "./RulesModal";
 import ThemeToggle from "./ThemeToggle";
 import PuzzleCalendarModal from "./PuzzleCalendarModal";
-import { useTheme } from "../contexts/ThemeContext";
 
 interface GameHeaderProps {
   className?: string;
@@ -14,59 +13,32 @@ interface GameHeaderProps {
 export default function GameHeader({ className = "", onSelectDate, currentDate }: GameHeaderProps) {
   const [showRules, setShowRules] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
-  const { isDark } = useTheme();
+
+  const railButton =
+    "font-data text-xs uppercase tracking-label text-ink-muted transition-colors duration-fast " +
+    "hover:text-ink focus-visible:text-ink";
 
   return (
     <>
-      <header className={`text-center space-y-4 relative ${className}`}>
-        {/* Top controls row - absolute positioned with flex */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between">
-          {/* Calendar Button */}
-          <button
-            onClick={() => setShowCalendar(true)}
-            className={`inline-flex items-center justify-center w-12 h-12 rounded-full
-                       transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2
-                       ${isDark
-                         ? 'bg-gray-800 hover:bg-gray-700 focus:ring-amber-400 text-amber-400'
-                         : 'bg-gray-100 hover:bg-gray-200 focus:ring-amber-500 text-gray-700'
-                       }`}
-            aria-label="Select puzzle date"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
+      <header className={`flex flex-col gap-8 ${className}`}>
+        {/* Utility rail. A thin line of controls, not a block that competes
+            with the placard for attention. */}
+        <div className="flex items-center justify-between border-b border-rule pb-3">
+          <button type="button" onClick={() => setShowCalendar(true)} className={railButton}>
+            Archive
           </button>
 
-          {/* Theme Toggle */}
-          <ThemeToggle />
+          <div className="flex items-center gap-6">
+            <button type="button" onClick={() => setShowRules(true)} className={railButton}>
+              How to play
+            </button>
+            <ThemeToggle />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <h1 className={`text-4xl md:text-5xl font-bold leading-tight pb-2
-            ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-            Figurdle
-          </h1>
-          <p className={`text-lg ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            Daily Famous Figure Guessing Game
-          </p>
-        </div>
-
-        <button
-          onClick={() => setShowRules(true)}
-          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full
-                     transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2
-                     ${isDark
-                       ? 'text-amber-400 bg-amber-900/30 hover:bg-amber-800/40 focus:ring-amber-400 focus:ring-offset-gray-900'
-                       : 'text-amber-600 bg-amber-50 hover:bg-amber-100 focus:ring-amber-500 focus:ring-offset-white'
-                     }`}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          How to Play
-        </button>
+        <h1 className="text-center font-sans text-sm font-semibold uppercase tracking-wordmark">
+          Figurdle
+        </h1>
       </header>
 
       <RulesModal

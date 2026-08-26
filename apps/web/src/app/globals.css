@@ -2,100 +2,109 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================================
+   Palette. Channels are space-separated RGB so Tailwind's <alpha-value> works,
+   which lets a single token cover fills, washes and hairlines.
+
+   Gallery by day. Portrait galleries are not painted white, so the wall is a
+   cool green-slate stone and the accent is the warm light falling on it.
+   ========================================================================== */
 :root {
-  /* Semantic color tokens - Light mode */
-  --color-background: #ffffff;
-  --color-background-elevated: #f9fafb;
-  --color-foreground: #111827;
-  --color-foreground-muted: #6b7280;
-  --color-border: #e5e7eb;
-  --color-border-strong: #d1d5db;
-
-  /* Brand colors */
-  --color-brand: #f59e0b;
-  --color-brand-hover: #d97706;
-  --color-brand-muted: #fef3c7;
-
-  /* Feedback colors */
-  --color-success: #10b981;
-  --color-error: #ef4444;
+  --wall:            223 224 216;  /* #DFE0D8 page ground */
+  --placard:         237 238 232;  /* #EDEEE8 raised surface */
+  --ink:              28  36  34;  /* #1C2422 11.9:1 on wall */
+  --ink-muted:        86  95  92;  /* #565F5C  4.95:1 on wall */
+  --rule:            198 200 190;  /* #C6C8BE hairline */
+  --accent:          114  91  29;  /* #725B1D  4.89:1 on wall (brand-800) */
+  --accent-contrast: 237 238 232;  /* text on an accent fill */
+  --shadow:           28  36  34;
+  --grain-opacity: 0.035;
 }
 
+/* Gallery at night. */
 .dark {
-  --color-background: #111827;
-  --color-background-elevated: #1f2937;
-  --color-foreground: #f9fafb;
-  --color-foreground-muted: #9ca3af;
-  --color-border: #374151;
-  --color-border-strong: #4b5563;
-
-  --color-brand: #fbbf24;
-  --color-brand-hover: #f59e0b;
-  --color-brand-muted: #78350f;
-
-  --color-success: #34d399;
-  --color-error: #f87171;
+  --wall:             28  36  34;  /* #1C2422 */
+  --placard:          38  48  45;  /* #26302D */
+  --ink:             232 230 223;  /* #E8E6DF 12.7:1 on wall */
+  --ink-muted:       154 163 159;  /* #9AA39F  6.12:1 on wall */
+  --rule:             55  66  62;  /* #37423E */
+  --accent:          199 167  92;  /* #C7A75C  6.88:1 on wall (brand-500) */
+  --accent-contrast:  28  36  34;
+  --shadow:            0   0   0;
+  --grain-opacity: 0.05;
 }
 
 @layer base {
-  body {
-    background: var(--color-background);
-    color: var(--color-foreground);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  /* Consistent focus states for accessibility */
-  *:focus-visible {
-    outline: 2px solid var(--color-brand);
-    outline-offset: 2px;
-  }
-
-  /* Remove default focus ring, rely on focus-visible */
-  *:focus:not(:focus-visible) {
-    outline: none;
-  }
-
-  /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
 
-  /* Selection color */
+  body {
+    background-color: rgb(var(--wall));
+    color: rgb(var(--ink));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* The painted wall. Replaces the two background PNGs: a faint grain over a
+     flat colour, fixed and non-interactive so it never repaints on scroll. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  *:focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 3px;
+  }
+
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+
   ::selection {
-    background-color: var(--color-brand-muted);
-    color: var(--color-foreground);
+    background-color: rgb(var(--accent) / 0.25);
+    color: rgb(var(--ink));
   }
 }
 
 @layer components {
-  /* Card component base */
-  .card {
-    @apply bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm;
+  /* Small uppercase mono label. Used for field names on the placard, never as a
+     decorative eyebrow above headings. */
+  .label {
+    @apply font-data text-xs uppercase tracking-label text-ink-muted;
   }
 
-  /* Button base */
-  .btn-primary {
-    @apply bg-amber-500 hover:bg-amber-600 text-white font-medium px-6 py-3 rounded-lg transition-colors duration-200;
+  /* Figures that sit in columns or get compared turn by turn. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 
-  .btn-secondary {
-    @apply bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium px-6 py-3 rounded-lg transition-colors duration-200;
+  /* The cover over the portrait plate. A woven weave rather than a flat fill, so
+     the uncovering reads as cloth being drawn back. */
+  .scrim {
+    background-color: rgb(var(--rule));
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0 2px, rgb(var(--shadow) / 0.05) 2px 4px),
+      repeating-linear-gradient(0deg, transparent 0 2px, rgb(var(--shadow) / 0.05) 2px 4px);
   }
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
-}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
 }

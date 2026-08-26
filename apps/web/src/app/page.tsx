@@ -10,7 +10,7 @@ import AlreadyPlayedMessage from "../components/AlreadyPlayedMessage";
 import HintsList from "../components/HintsList";
 import GuessForm from "../components/GuessForm";
 import GameOverMessage from "../components/GameOverMessage";
-import { useTheme } from "../contexts/ThemeContext";
+import PortraitPlate, { type PlateState } from "../components/PortraitPlate";
 
 export default function Home() {
   const [puzzle, setPuzzle] = useState<PublicPuzzle | null>(null);
@@ -32,7 +32,6 @@ export default function Home() {
   } | null>(null);
   const [shouldShake, setShouldShake] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const { isDark } = useTheme();
 
   function handleDateSelection(date: string) {
     // Reset all game state when selecting a new date
@@ -311,167 +310,128 @@ export default function Home() {
     }
   }
 
-  // Loading and error states
+  const shell = "mx-auto flex w-full max-w-xl flex-col gap-10 px-5 py-10 sm:px-8";
+
+  // A skeleton in the shape of the placard rather than a spinner, so the layout
+  // does not shift once the puzzle lands.
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center
-        ${isDark ? 'bg-gray-900' : 'bg-amber-50'}`}>
-        <div className="text-center space-y-4">
-          <div className={`animate-spin rounded-full h-12 w-12 border-4 border-t-transparent mx-auto
-            ${isDark ? 'border-amber-400' : 'border-amber-600'}`}></div>
-          <p className={`text-lg font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            Loading puzzle...
-          </p>
+      <div className="min-h-[100dvh]">
+        <div className={shell}>
+          <div className="h-4 animate-pulse border-b border-rule" />
+          <div className="flex flex-col gap-6 border border-rule bg-placard p-5 shadow-plate sm:p-7">
+            <div className="mx-auto aspect-[4/5] w-full max-w-[17rem] animate-pulse border border-rule bg-wall" />
+            <div className="h-10 animate-pulse border-y border-rule" />
+            <div className="flex flex-col">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-12 animate-pulse border-b border-rule" />
+              ))}
+            </div>
+          </div>
+          <p className="label text-center">Loading the day&apos;s figure</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !puzzle) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-6
-        ${isDark ? 'bg-gray-900' : 'bg-red-50'}`}>
-        <div className={`rounded-2xl shadow-2xl p-8 max-w-md w-full text-center
-          ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white'}`}>
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4
-            ${isDark ? 'bg-red-900/50' : 'bg-red-100'}`}>
-            <svg className={`w-8 h-8 ${isDark ? 'text-red-400' : 'text-red-600'}`}
-                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <h2 className={`text-xl font-bold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            Oops! Something went wrong
-          </h2>
-          <p className={`mb-4 ${isDark ? 'text-red-400' : 'text-red-600'}`}>{error}</p>
+      <div className="grid min-h-[100dvh] place-items-center px-5">
+        <div className="flex w-full max-w-sm flex-col gap-4 border border-rule bg-placard p-7 shadow-plate">
+          <h1 className="font-display text-xl font-medium">
+            The puzzle didn&apos;t load
+          </h1>
+          <p className="text-base text-ink-muted">{error}</p>
           <button
+            type="button"
             onClick={() => window.location.reload()}
-            className={`px-6 py-2 rounded-lg transition-colors
-              ${isDark
-                ? 'bg-red-600 hover:bg-red-500 text-white'
-                : 'bg-red-600 hover:bg-red-700 text-white'
-              }`}
+            className="self-start border border-accent bg-accent px-5 py-3
+                       font-sans text-sm font-semibold uppercase tracking-label text-accent-contrast
+                       transition-opacity duration-fast hover:opacity-85 active:translate-y-px"
           >
-            Try Again
+            Try again
           </button>
         </div>
       </div>
     );
   }
 
+  const plateState: PlateState = isVictorious ? "lit" : isGameOver ? "unlit" : "covered";
+  const answer = result?.normalized_answer || puzzle?.answer;
+  const playing = Boolean(sessionStatus?.can_play) && !isVictorious && !isGameOver;
+
   return (
-    <div className="min-h-screen relative">
-      {/* Custom PNG Background */}
-      <div className="absolute inset-0">
-        {/* Dark Mode Background */}
-        <div
-          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500
-            ${isDark ? 'opacity-100' : 'opacity-0'}`}
-          style={{
-            backgroundImage: 'url(/backgrounds/dark-background.png)',
-            backgroundColor: '#1f2937' // Fallback color if image doesn't load
-          }}
+    <div className="min-h-[100dvh]">
+      <div className={shell}>
+        <GameHeader
+          onSelectDate={handleDateSelection}
+          currentDate={puzzle?.puzzle_date}
         />
 
-        {/* Light Mode Background */}
-        <div
-          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500
-            ${isDark ? 'opacity-0' : 'opacity-100'}`}
-          style={{
-            backgroundImage: 'url(/backgrounds/light-background.png)',
-            backgroundColor: '#f8fafc' // Fallback color if image doesn't load
-          }}
-        />
+        {/* One placard. Hierarchy comes from rules, space and type rather than
+            a stack of separately bordered cards. */}
+        <main className="flex flex-col gap-6 border border-rule bg-placard p-5 shadow-plate sm:p-7">
+          <PortraitPlate
+            state={plateState}
+            imageUrl={puzzle?.image_url}
+            answer={answer}
+          />
 
-        {/* Overlay for better text readability */}
-        <div className={`absolute inset-0 transition-all duration-500
-          ${isDark
-            ? 'bg-black/20'
-            : 'bg-white/20'
-          }`}
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="relative z-10">
-        <div className="container mx-auto px-4 py-8 max-w-4xl">
-          <div className="space-y-8">
-            {/* Game Header */}
-            <GameHeader
-              className="mb-12"
-              onSelectDate={handleDateSelection}
-              currentDate={puzzle?.puzzle_date}
+          {puzzle && (
+            <PuzzleInfo
+              puzzleDate={puzzle.puzzle_date}
+              attempts={attemptCount}
+              maxAttempts={puzzle.hints_count + 1}
+              sessionStatus={sessionStatus}
             />
+          )}
 
-            {/* Game Content */}
-            <div className="max-w-2xl mx-auto space-y-6">
-              {/* Puzzle Info */}
-              {puzzle && (
-                <PuzzleInfo
-                  puzzleDate={puzzle.puzzle_date}
-                  attempts={attemptCount}
-                  maxAttempts={puzzle.hints_count + 1}
-                  sessionStatus={sessionStatus}
-                />
-              )}
+          <HintsList
+            hints={hints}
+            totalHints={puzzle?.hints_count ?? 0}
+            lastGuessResult={lastGuessResult}
+          />
 
-              {/* Already Played Message */}
-              {sessionStatus && !sessionStatus.can_play && !isVictorious && !isGameOver && (
-                <AlreadyPlayedMessage sessionStatus={sessionStatus} />
-              )}
+          {playing && (
+            <GuessForm
+              onSubmit={handleGuessSubmit}
+              onSkip={handleSkip}
+              disabled={!puzzle}
+              loading={submitting}
+              isVictorious={isVictorious}
+              isGameOver={isGameOver}
+              triggerShake={shouldShake}
+            />
+          )}
 
-              {/* Hints List */}
-              <HintsList hints={hints} lastGuessResult={lastGuessResult} />
+          <GameOverMessage
+            isVictorious={isVictorious}
+            isGameOver={isGameOver}
+            revealedCount={actuallyRevealedCount}
+            attempts={attemptCount}
+          />
+        </main>
 
-              {/* Guess Form */}
-              {sessionStatus?.can_play && (
-                <GuessForm
-                  onSubmit={handleGuessSubmit}
-                  onSkip={handleSkip}
-                  disabled={!sessionStatus?.can_play || !puzzle}
-                  loading={submitting}
-                  isVictorious={isVictorious}
-                  isGameOver={isGameOver}
-                  triggerShake={shouldShake}
-                />
-              )}
+        {sessionStatus && !sessionStatus.can_play && !isVictorious && !isGameOver && (
+          <AlreadyPlayedMessage sessionStatus={sessionStatus} />
+        )}
 
-
-              {/* Game Over Message */}
-              <GameOverMessage
-                isVictorious={isVictorious}
-                isGameOver={isGameOver}
-                result={result}
-                hints={hints}
-                revealedCount={actuallyRevealedCount}
-                attempts={attemptCount}
-                puzzle={puzzle}
-              />
-
-              {/* Error Display */}
-              {error && !loading && (
-                <div className={`rounded-2xl border shadow-lg p-6 text-center backdrop-blur-sm
-                  ${isDark
-                    ? 'bg-red-900/80 border-red-700'
-                    : 'bg-red-50/80 border-red-200'
-                  }`}>
-                  <p className={`font-medium ${isDark ? 'text-red-200' : 'text-red-800'}`}>
-                    Error: {error}
-                  </p>
-                  <button
-                    onClick={() => setError(null)}
-                    className={`mt-2 text-sm underline transition-colors
-                      ${isDark ? 'text-red-300 hover:text-red-100' : 'text-red-600 hover:text-red-800'}`}
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              )}
-
-            </div>
+        {error && (
+          <div
+            role="status"
+            className="flex flex-wrap items-baseline justify-between gap-3 border border-rule px-4 py-3"
+          >
+            <p className="text-sm text-ink-muted">{error}</p>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="font-data text-xs uppercase tracking-label text-accent
+                         transition-opacity duration-fast hover:opacity-70"
+            >
+              Dismiss
+            </button>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

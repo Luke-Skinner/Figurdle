@@ -1,5 +1,4 @@
 import { type SessionStatus } from "../lib/api";
-import { useTheme } from "../contexts/ThemeContext";
 
 interface PuzzleInfoProps {
   puzzleDate: string;
@@ -9,6 +8,11 @@ interface PuzzleInfoProps {
   className?: string;
 }
 
+/**
+ * The placard's header line: date on the left, attempts on the right, ruled
+ * above and below. Replaces the three-column card with the oversized question
+ * mark, which gave catalogue metadata the same weight as the portrait.
+ */
 export default function PuzzleInfo({
   puzzleDate,
   attempts,
@@ -16,88 +20,30 @@ export default function PuzzleInfo({
   sessionStatus,
   className = ""
 }: PuzzleInfoProps) {
-  const { isDark } = useTheme();
+  const formattedDate = new Date(puzzleDate + 'T12:00:00')
+    .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+    .toUpperCase();
+
+  const finished = sessionStatus?.has_played && !sessionStatus.can_play;
 
   return (
-    <div className={`rounded-2xl p-6 shadow-lg border ${className}
-      ${isDark
-        ? 'bg-gray-800 border-gray-700'
-        : 'bg-white border-gray-100'
-      }`}>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-        {/* Puzzle Date */}
-        <div className="text-center md:text-left">
-          <div className={`text-sm font-medium uppercase tracking-wide
-            ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Puzzle Date
-          </div>
-          <div className={`text-xl font-bold mt-1
-            ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            {new Date(puzzleDate + 'T12:00:00').toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </div>
-        </div>
+    <div
+      className={`flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1
+                  border-y border-rule py-2.5
+                  font-data text-sm tabular text-ink-muted ${className}`}
+    >
+      <time dateTime={puzzleDate}>{formattedDate}</time>
 
-        {/* Center Question Mark */}
-        <div className="flex justify-center">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center
-            ${isDark
-              ? 'bg-amber-900/30 border-2 border-amber-700/50'
-              : 'bg-amber-50 border-2 border-amber-200'
-            }`}>
-            <span className={`text-3xl font-bold
-              ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-              ?
-            </span>
-          </div>
-        </div>
-
-        {/* Attempts */}
-        <div className="text-center md:text-right">
-          <div className={`text-sm font-medium uppercase tracking-wide
-            ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Attempts
-          </div>
-          <div className={`text-2xl font-bold mt-1
-            ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-            {attempts}/{maxAttempts}
-          </div>
-        </div>
-      </div>
-
-      {/* Completion Status Badge */}
-      {sessionStatus?.has_played && !sessionStatus.can_play && (
-        <div className={`mt-4 pt-4 border-t ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-          <div className="flex items-center justify-center">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium
-              ${sessionStatus.result === 'won'
-                ? isDark
-                  ? 'bg-green-900/50 text-green-300 border border-green-700'
-                  : 'bg-green-100 text-green-800 border border-green-200'
-                : isDark
-                  ? 'bg-red-900/50 text-red-300 border border-red-700'
-                  : 'bg-red-100 text-red-800 border border-red-200'
-              }`}
-            >
-              <svg className={`w-4 h-4 mr-2 ${sessionStatus.result === 'won'
-                ? isDark ? 'text-green-400' : 'text-green-500'
-                : isDark ? 'text-red-400' : 'text-red-500'}`}
-                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {sessionStatus.result === 'won' ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                )}
-              </svg>
-              Completed: {sessionStatus.result === 'won' ? 'Victory' : 'Lost'}
-            </span>
-          </div>
-        </div>
+      {finished ? (
+        // The record itself lives in the closing summary below the register, so
+        // this line states only the outcome.
+        <span className="text-ink">
+          {sessionStatus?.result === 'won' ? 'SOLVED' : 'NOT SOLVED'}
+        </span>
+      ) : (
+        <span>
+          ATTEMPT <span className="text-ink">{attempts}</span> / {maxAttempts}
+        </span>
       )}
     </div>
   );

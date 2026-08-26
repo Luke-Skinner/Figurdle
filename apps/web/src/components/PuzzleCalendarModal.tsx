@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useTheme } from "../contexts/ThemeContext";
 import { getAvailablePuzzles, type AvailablePuzzle } from "../lib/api";
 
 interface PuzzleCalendarModalProps {
@@ -16,7 +15,6 @@ export default function PuzzleCalendarModal({
   onSelectDate,
   currentDate
 }: PuzzleCalendarModalProps) {
-  const { isDark } = useTheme();
   const [puzzles, setPuzzles] = useState<AvailablePuzzle[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +25,20 @@ export default function PuzzleCalendarModal({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    if (isOpen) {
+      document.addEventListener("keydown", handleEscape);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen, onClose]);
+
   async function loadPuzzles() {
     try {
       setLoading(true);
@@ -34,7 +46,7 @@ export default function PuzzleCalendarModal({
       const data = await getAvailablePuzzles();
       setPuzzles(data.puzzles);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load puzzles");
+      setError(e instanceof Error ? e.message : "The archive didn't load");
     } finally {
       setLoading(false);
     }
@@ -46,12 +58,9 @@ export default function PuzzleCalendarModal({
   }
 
   function formatDate(dateStr: string): string {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return new Date(dateStr + 'T00:00:00')
+      .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+      .toUpperCase();
   }
 
   function isToday(dateStr: string): boolean {
@@ -63,117 +72,85 @@ export default function PuzzleCalendarModal({
   if (!isOpen) return null;
 
   return (
-    <>
-      {/* Backdrop */}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="archive-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
+        className="absolute inset-0 bg-[rgb(var(--shadow)/0.55)] backdrop-blur-sm"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className={`w-full max-w-2xl max-h-[80vh] rounded-2xl shadow-2xl border-2 overflow-hidden
-          ${isDark
-            ? 'bg-gray-800 border-amber-600/50'
-            : 'bg-white border-amber-200'
-          }`}>
-
-          {/* Header */}
-          <div className={`p-6 border-b
-            ${isDark ? 'border-amber-600/50' : 'border-amber-200'}`}>
-            <div className="flex items-center justify-between">
-              <h2 className={`text-2xl font-bold
-                ${isDark ? 'text-amber-300' : 'text-amber-800'}`}>
-                Select a Puzzle
-              </h2>
-              <button
-                onClick={onClose}
-                className={`p-2 rounded-lg transition-colors
-                  ${isDark
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'
-                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                  }`}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[60vh]">
-            {loading && (
-              <div className="flex justify-center items-center py-12">
-                <div className={`animate-spin rounded-full h-12 w-12 border-4 border-t-transparent
-                  ${isDark ? 'border-amber-400' : 'border-amber-600'}`}></div>
-              </div>
-            )}
-
-            {error && (
-              <div className={`rounded-lg p-4 text-center
-                ${isDark ? 'bg-red-900/50 text-red-200' : 'bg-red-50 text-red-800'}`}>
-                {error}
-              </div>
-            )}
-
-            {!loading && !error && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {puzzles.map((puzzle) => (
-                  <button
-                    key={puzzle.puzzle_date}
-                    onClick={() => handleSelectDate(puzzle.puzzle_date)}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200
-                      hover:scale-[1.02] focus:outline-none focus:ring-4
-                      ${currentDate === puzzle.puzzle_date
-                        ? isDark
-                          ? 'bg-amber-900/50 border-amber-500 text-amber-200'
-                          : 'bg-amber-100 border-amber-500 text-amber-900'
-                        : isDark
-                          ? 'bg-gray-700/50 border-gray-600 hover:border-amber-500/50 text-gray-200'
-                          : 'bg-gray-50 border-gray-200 hover:border-amber-400 text-gray-900'
-                      }
-                      ${isDark ? 'focus:ring-amber-500/30' : 'focus:ring-amber-500/30'}
-                    `}
-                  >
-                    <div className="flex flex-col items-center gap-2">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <div className="font-semibold">
-                        {formatDate(puzzle.puzzle_date)}
-                      </div>
-                      {isToday(puzzle.puzzle_date) && (
-                        <div className={`text-xs px-2 py-1 rounded-full
-                          ${isDark ? 'bg-amber-700 text-amber-200' : 'bg-amber-200 text-amber-800'}`}>
-                          Today
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {!loading && !error && puzzles.length === 0 && (
-              <div className={`text-center py-12
-                ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                No puzzles available yet.
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className={`p-4 border-t
-            ${isDark ? 'border-amber-600/50 bg-gray-900/50' : 'border-amber-200 bg-gray-50'}`}>
-            <p className={`text-sm text-center
-              ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-              Select any past puzzle to play or replay
-            </p>
-          </div>
+      <div className="relative flex max-h-[85vh] w-full max-w-xl flex-col
+                      border border-rule bg-placard shadow-plate">
+        <div className="flex items-baseline justify-between gap-4 border-b border-rule px-6 py-4">
+          <h2 id="archive-title" className="font-display text-xl font-medium">
+            Archive
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="font-data text-xs uppercase tracking-label text-ink-muted
+                       transition-colors duration-fast hover:text-ink"
+          >
+            Close
+          </button>
         </div>
+
+        <div className="overflow-y-auto px-6 py-2">
+          {loading && (
+            <ol className="m-0 list-none p-0">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <li key={i} className="h-12 animate-pulse border-b border-rule" />
+              ))}
+            </ol>
+          )}
+
+          {error && (
+            <p className="py-6 text-base text-ink-muted">{error}</p>
+          )}
+
+          {!loading && !error && puzzles.length === 0 && (
+            <p className="py-6 text-base text-ink-muted">
+              No past puzzles yet. The first one lands tomorrow.
+            </p>
+          )}
+
+          {!loading && !error && puzzles.length > 0 && (
+            <ol className="m-0 list-none p-0">
+              {puzzles.map((puzzle) => {
+                const selected = currentDate === puzzle.puzzle_date;
+                return (
+                  <li key={puzzle.puzzle_date}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectDate(puzzle.puzzle_date)}
+                      aria-current={selected ? "true" : undefined}
+                      className={`flex w-full items-baseline justify-between gap-4 border-b border-rule
+                                  py-3 text-left font-data text-sm tabular
+                                  transition-colors duration-fast
+                                  ${selected
+                                    ? "text-accent"
+                                    : "text-ink-muted hover:text-ink"}`}
+                    >
+                      <span>{formatDate(puzzle.puzzle_date)}</span>
+                      <span className="text-xs uppercase tracking-label">
+                        {selected ? "Showing" : isToday(puzzle.puzzle_date) ? "Today" : "Play"}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </div>
+
+        <p className="border-t border-rule px-6 py-3 text-sm text-ink-muted">
+          Any past puzzle can be played or replayed.
+        </p>
       </div>
-    </>
+    </div>
   );
 }

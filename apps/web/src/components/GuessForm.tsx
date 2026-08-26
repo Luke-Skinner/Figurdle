@@ -1,6 +1,5 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { useTheme } from "../contexts/ThemeContext";
 
 interface GuessFormProps {
   onSubmit: (guess: string) => void;
@@ -26,16 +25,13 @@ export default function GuessForm({
   const [guess, setGuess] = useState("");
   const [isShaking, setIsShaking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { isDark } = useTheme();
 
-  // Focus input on mount and when game resets
   useEffect(() => {
     if (!disabled && !isVictorious && !isGameOver) {
       inputRef.current?.focus();
     }
   }, [disabled, isVictorious, isGameOver]);
 
-  // Shake animation effect
   useEffect(() => {
     if (triggerShake) {
       setIsShaking(true);
@@ -49,134 +45,73 @@ export default function GuessForm({
     if (!guess.trim() || disabled || loading || isVictorious || isGameOver) return;
 
     onSubmit(guess.trim());
-    setGuess(""); // Clear input after submission
+    setGuess("");
   };
 
-  const getPlaceholderText = () => {
-    if (isVictorious) return "Puzzle completed!";
-    if (isGameOver) return "Game over!";
-    if (loading) return "Checking your guess...";
-    return "Enter your guess...";
-  };
+  const locked = disabled || isVictorious || isGameOver;
+  const cannotSubmit = locked || loading || !guess.trim();
 
-  const getButtonText = () => {
-    if (loading) return "Checking...";
-    if (isVictorious) return "Completed";
-    if (isGameOver) return "Game Over";
-    return "Submit Guess";
-  };
+  // A disabled control still has to be readable. Fading the accent fill to 40%
+  // left the resting state of the primary button at roughly 1.7:1, so disabled
+  // drops to a neutral outline that clears AA instead.
+  const button =
+    "border px-5 py-3 font-sans text-sm font-semibold uppercase tracking-label " +
+    "transition-[background-color,border-color,color,opacity,transform] duration-fast " +
+    "enabled:active:translate-y-px " +
+    "disabled:cursor-not-allowed disabled:border-rule disabled:bg-transparent disabled:text-ink-muted";
 
   return (
-    <div className={`rounded-2xl border shadow-lg p-6 backdrop-blur-sm transition-all duration-200 ${className}
-      ${isDark
-        ? 'bg-gray-800/80 border-gray-700'
-        : 'bg-white/80 border-gray-200'
-      }
-      ${isShaking ? 'animate-pulse transform' : ''}
-    `}
-    style={isShaking ? {
-      animation: 'shake 0.5s ease-in-out'
-    } : {}}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Input Field */}
-        <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            value={guess}
-            onChange={(e) => setGuess(e.target.value)}
-            placeholder={getPlaceholderText()}
-            disabled={disabled || isVictorious || isGameOver}
-            className={`w-full px-6 py-4 text-lg rounded-xl border-2 transition-all duration-200
-              focus:outline-none focus:ring-4 backdrop-blur-sm
-              ${disabled || isVictorious || isGameOver
-                ? isDark
-                  ? 'border-gray-600 bg-gray-700/50 text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-gray-50/50 text-gray-400 cursor-not-allowed'
-                : isDark
-                  ? 'border-gray-600 focus:border-amber-400 bg-gray-700/50 text-gray-100 hover:border-gray-500 focus:ring-amber-400/20'
-                  : 'border-gray-300 focus:border-amber-500 bg-white/50 text-gray-900 hover:border-gray-400 focus:ring-amber-500/20'
-              }
-              ${loading ? 'animate-pulse' : ''}
-            `}
-            autoComplete="off"
-            spellCheck={false}
-          />
+    <form
+      onSubmit={handleSubmit}
+      className={`flex flex-col gap-3 ${isShaking ? "animate-shake" : ""} ${className}`}
+    >
+      <div className="flex flex-wrap gap-2">
+        <label className="sr-only" htmlFor="figure-guess">Name the figure</label>
+        <input
+          id="figure-guess"
+          ref={inputRef}
+          type="text"
+          value={guess}
+          onChange={(e) => setGuess(e.target.value)}
+          placeholder="Name the figure"
+          disabled={locked}
+          className="min-w-0 flex-1 basis-48 border border-rule bg-wall px-4 py-3
+                     font-sans text-base text-ink
+                     placeholder:text-ink-muted
+                     transition-colors duration-fast
+                     hover:border-ink-muted
+                     focus:border-accent focus:outline-none
+                     disabled:cursor-not-allowed disabled:opacity-50"
+          autoComplete="off"
+          spellCheck={false}
+        />
 
-          {/* Loading Spinner */}
-          {loading && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-amber-600 border-t-transparent"></div>
-            </div>
-          )}
-        </div>
+        <button
+          type="submit"
+          disabled={cannotSubmit}
+          className={`${button} border-accent bg-accent text-accent-contrast enabled:hover:opacity-85`}
+        >
+          {loading ? "Checking" : "Submit"}
+        </button>
 
-        {/* Submit and Skip Buttons */}
-        <div className="flex gap-3">
+        {onSkip && !isVictorious && !isGameOver && (
           <button
-            type="submit"
-            disabled={!guess.trim() || disabled || loading || isVictorious || isGameOver}
-            className={`flex-1 py-4 px-6 rounded-xl font-medium text-lg transition-all duration-200
-              transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
-              ${disabled || !guess.trim() || loading || isVictorious || isGameOver
-                ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed hover:scale-100'
-                : 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg hover:shadow-xl focus:ring-amber-500/30'
-              }
-            `}
+            type="button"
+            onClick={onSkip}
+            disabled={disabled || loading}
+            title="Reveal the next hint without using a guess"
+            className={`${button} border-rule bg-transparent text-ink-muted enabled:hover:border-accent enabled:hover:text-accent`}
           >
-            <div className="flex items-center justify-center gap-2">
-              {loading && (
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-              )}
-              <span>{getButtonText()}</span>
-              {!loading && !disabled && !isVictorious && !isGameOver && (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              )}
-            </div>
+            Skip
           </button>
-
-          {/* Skip Button */}
-          {onSkip && !isVictorious && !isGameOver && (
-            <button
-              type="button"
-              onClick={onSkip}
-              disabled={disabled || loading}
-              className={`py-4 px-6 rounded-xl font-medium text-lg transition-all duration-200
-                transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-4
-                ${disabled || loading
-                  ? isDark
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed hover:scale-100 border border-gray-600'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed hover:scale-100 border border-gray-300'
-                  : isDark
-                    ? 'bg-gray-700 hover:bg-gray-600 text-amber-300 border border-gray-600 hover:border-amber-500 shadow-lg hover:shadow-xl focus:ring-amber-500/30'
-                    : 'bg-white hover:bg-gray-50 text-amber-700 border-2 border-amber-300 hover:border-amber-400 shadow-lg hover:shadow-xl focus:ring-amber-500/30'
-                }
-              `}
-              title="Skip to next hint"
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span>Skip</span>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
-              </div>
-            </button>
-          )}
-        </div>
-
-        {/* Hint Text */}
-        {!disabled && !isVictorious && !isGameOver && (
-          <div className="text-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Try full name of figures
-            </p>
-          </div>
         )}
-      </form>
-    </div>
+      </div>
+
+      {!locked && (
+        <p className="font-data text-xs uppercase tracking-label text-ink-muted">
+          Full names match best
+        </p>
+      )}
+    </form>
   );
 }

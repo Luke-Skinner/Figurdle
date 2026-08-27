@@ -8,6 +8,7 @@ from .ai import generate_daily_character_with_ai_evaluation, CharacterGeneration
 from datetime import datetime, date
 import pytz, hmac, hashlib, json, secrets
 import logging
+import time
 import traceback
 
 logger = logging.getLogger(__name__)
@@ -273,7 +274,8 @@ def rotate(admin_key: str = Depends(verify_admin_key)):
 @app.post("/admin/refresh-images")
 def refresh_images(
     admin_key: str = Depends(verify_admin_key),
-    limit: int = 200,
+    limit: int = 50,
+    offset: int = 0,
     dry_run: bool = False,
 ):
     """
@@ -285,7 +287,9 @@ def refresh_images(
     back catalogue benefits too. Safe to re-run: a puzzle is only written when
     the lookup returns a different, non-empty URL.
 
-    Pass dry_run=true to see what would change without writing.
+    Pass dry_run=true to see what would change without writing. Work through the
+    back catalogue in batches with limit and offset; the lookups are throttled,
+    so a large limit can approach the Cloud Run request timeout.
     """
     updated, unchanged, failed = [], 0, []
 
@@ -293,13 +297,18 @@ def refresh_images(
         puzzles = (
             db.query(Puzzle)
             .order_by(Puzzle.puzzle_date.desc())
+            .offset(offset)
             .limit(limit)
             .all()
         )
 
-        for p in puzzles:
+        for index, p in enumerate(puzzles):
             if not p.answer:
                 continue
+            # Space the lookups out. Wikipedia rate limits a tight loop, which
+            # silently degrades results rather than erroring.
+            if index:
+                time.sleep(0.35)
             try:
                 new_url = get_wikipedia_image(p.answer)
             except Exception as e:

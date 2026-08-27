@@ -37,6 +37,24 @@ WIKI_HEADERS = {
 }
 
 
+def _wiki_get(url: str, **kwargs):
+    """
+    GET against a Wikipedia endpoint, retrying politely on rate limiting.
+
+    Batch jobs (the admin image refresh) walk hundreds of characters in a row
+    and will otherwise trip Wikipedia's 429, which used to degrade silently to a
+    lower-resolution image or none at all.
+    """
+    for attempt in range(3):
+        response = requests.get(url, headers=WIKI_HEADERS, timeout=10, **kwargs)
+        if response.status_code != 429:
+            return response
+        wait = float(response.headers.get("Retry-After", 0)) or (1.5 * (attempt + 1))
+        logger.info(f"Wikipedia rate limited, waiting {wait:.1f}s")
+        time.sleep(wait)
+    return response
+
+
 def _image_within_budget(url: str) -> bool:
     """True if the URL serves 200 and is small enough to load on a phone."""
     try:
@@ -58,10 +76,8 @@ def _sized_thumbnail(character_name: str) -> Optional[str]:
     and returns 400, so the width has to be negotiated through the API.
     """
     try:
-        response = requests.get(
+        response = _wiki_get(
             "https://en.wikipedia.org/w/api.php",
-            headers=WIKI_HEADERS,
-            timeout=10,
             params={
                 "action": "query", "format": "json", "prop": "pageimages",
                 "piprop": "thumbnail", "pithumbsize": THUMB_WIDTH,
@@ -99,10 +115,8 @@ def get_wikipedia_image(character_name: str) -> Optional[str]:
     # 2. Whatever thumbnail the summary endpoint offers, plus the original as a
     #    last resort. Both come from the same call.
     try:
-        response = requests.get(
-            f"https://en.wikipedia.org/api/rest_v1/page/summary/{wiki_name}",
-            headers=WIKI_HEADERS,
-            timeout=10,
+        response = _wiki_get(
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{wiki_name}"
         )
         if response.status_code != 200:
             logger.warning(f"Wikipedia API returned {response.status_code} for {character_name}")

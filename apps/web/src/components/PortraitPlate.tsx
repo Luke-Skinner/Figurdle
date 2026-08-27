@@ -10,8 +10,6 @@ interface PortraitPlateProps {
   className?: string;
 }
 
-const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/400x500.png?text=No+Portrait+Available';
-
 export default function PortraitPlate({
   state,
   imageUrl,
@@ -19,6 +17,12 @@ export default function PortraitPlate({
   className = ""
 }: PortraitPlateProps) {
   const covered = state === "covered";
+  const [imageFailed, setImageFailed] = useState(false);
+
+  // A new puzzle deserves a fresh attempt at its portrait.
+  useEffect(() => {
+    setImageFailed(false);
+  }, [imageUrl]);
 
   // Hold the scrim closed for a beat after the game resolves, so the uncovering
   // reads as its own moment rather than arriving with the rest of the layout.
@@ -40,26 +44,34 @@ export default function PortraitPlate({
                    border border-rule bg-wall shadow-plate"
       >
         {/* The portrait. The API only returns image_url once the puzzle is
-            resolved, so during play this is an empty frame under the scrim. */}
-        {imageUrl ? (
+            resolved, so during play this is an empty frame under the scrim.
+
+            No crossOrigin here on purpose. Nothing reads pixels back from this
+            image, so the attribute bought nothing and only added a CORS failure
+            path - notably on iOS Safari, where an image already cached from a
+            non-CORS request fails when re-requested with it. */}
+        {imageUrl && !imageFailed ? (
           <img
             src={imageUrl}
             alt={answer ? `Portrait of ${answer}` : "Portrait of the day's figure"}
             className={`absolute inset-0 h-full w-full object-cover transition-[filter] duration-slow
               ${state === "unlit" ? "saturate-[0.25] brightness-[0.94]" : ""}`}
             loading="eager"
-            crossOrigin="anonymous"
+            decoding="async"
+            referrerPolicy="no-referrer"
             width="400"
             height="500"
-            onError={(e) => {
-              const img = e.target as HTMLImageElement;
-              if (img.src !== PLACEHOLDER_IMAGE) {
-                img.src = PLACEHOLDER_IMAGE;
-              }
-            }}
+            onError={() => setImageFailed(true)}
           />
         ) : (
-          <div className="absolute inset-0 bg-placard" />
+          /* Rendered in-app rather than fetched. The old fallback pointed at
+             via.placeholder.com, which no longer resolves, so any transient
+             image failure turned into a permanently broken frame. */
+          <div className="absolute inset-0 grid place-items-center bg-placard">
+            {!covered && (
+              <span className="label">Portrait unavailable</span>
+            )}
+          </div>
         )}
 
         {/* Gallery light. Warm, directional, from the top left. Wins only. */}

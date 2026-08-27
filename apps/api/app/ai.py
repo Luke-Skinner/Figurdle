@@ -6,6 +6,7 @@ import logging
 import time
 import random
 import requests
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -28,47 +29,104 @@ def verify_image_url(url: str) -> bool:
         logger.debug(f"Image verification failed for {url}: {e}")
         return False
 
-def get_wikipedia_image(character_name: str) -> Optional[str]:
+THUMB_WIDTH = 640
+MAX_IMAGE_BYTES = 800_000
+
+WIKI_HEADERS = {
+    'User-Agent': 'Figurdle/1.0 (https://figurdle.com; contact@figurdle.com) Python/requests'
+}
+
+
+def _image_within_budget(url: str) -> bool:
+    """True if the URL serves 200 and is small enough to load on a phone."""
+    try:
+        r = requests.head(url, headers=WIKI_HEADERS, timeout=8, allow_redirects=True)
+        if r.status_code != 200:
+            return False
+        length = int(r.headers.get('content-length', 0))
+        return length == 0 or length <= MAX_IMAGE_BYTES
+    except Exception:
+        return False
+
+
+def _sized_thumbnail(character_name: str) -> Optional[str]:
     """
-    Fetch character image from Wikipedia API.
-    Returns the image URL or None if not found.
+    Ask the Action API for a thumbnail at a specific width.
+
+    Note: rewriting the width inside a commons thumb URL by hand does NOT work.
+    Wikimedia refuses arbitrary widths for some files (large PNGs in particular)
+    and returns 400, so the width has to be negotiated through the API.
     """
     try:
-        # Wikipedia REST API - page summary endpoint
-        wiki_name = character_name.replace(" ", "_")
-        url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{wiki_name}"
-
-        # Wikipedia requires User-Agent header
-        headers = {
-            'User-Agent': 'Figurdle/1.0 (https://figurdle.com; contact@figurdle.com) Python/requests'
-        }
-
-        response = requests.get(url, headers=headers, timeout=10)
-
-        if response.status_code == 200:
-            data = response.json()
-
-            # Try to get the original image first (higher quality)
-            if 'originalimage' in data and data['originalimage'].get('source'):
-                image_url = data['originalimage']['source']
-                logger.info(f"Found Wikipedia original image for {character_name}: {image_url}")
-                return image_url
-
-            # Fall back to thumbnail
-            elif 'thumbnail' in data and data['thumbnail'].get('source'):
-                image_url = data['thumbnail']['source']
-                logger.info(f"Found Wikipedia thumbnail for {character_name}: {image_url}")
-                return image_url
-
-            logger.warning(f"Wikipedia page found for {character_name} but no image available")
+        response = requests.get(
+            "https://en.wikipedia.org/w/api.php",
+            headers=WIKI_HEADERS,
+            timeout=10,
+            params={
+                "action": "query", "format": "json", "prop": "pageimages",
+                "piprop": "thumbnail", "pithumbsize": THUMB_WIDTH,
+                "titles": character_name.replace("_", " "), "redirects": 1,
+            },
+        )
+        if response.status_code != 200:
             return None
-        else:
+        pages = response.json().get("query", {}).get("pages", {})
+        for _, page in pages.items():
+            thumb = page.get("thumbnail")
+            if thumb and thumb.get("source"):
+                return thumb["source"]
+    except Exception as e:
+        logger.debug(f"Action API thumbnail lookup failed for {character_name}: {e}")
+    return None
+
+
+def get_wikipedia_image(character_name: str) -> Optional[str]:
+    """
+    Fetch a character image from Wikipedia, preferring a phone-sized thumbnail.
+
+    Originals are routinely 0.5-2 MB, which on a phone is indistinguishable from
+    the portrait never loading. Order of preference is a width-negotiated
+    thumbnail, then the summary endpoint's own thumbnail, then the original.
+    """
+    wiki_name = character_name.replace(" ", "_")
+
+    # 1. A thumbnail at a width we chose
+    sized = _sized_thumbnail(character_name)
+    if sized and _image_within_budget(sized):
+        logger.info(f"Using {THUMB_WIDTH}px Wikipedia thumbnail for {character_name}: {sized}")
+        return sized
+
+    # 2. Whatever thumbnail the summary endpoint offers, plus the original as a
+    #    last resort. Both come from the same call.
+    try:
+        response = requests.get(
+            f"https://en.wikipedia.org/api/rest_v1/page/summary/{wiki_name}",
+            headers=WIKI_HEADERS,
+            timeout=10,
+        )
+        if response.status_code != 200:
             logger.warning(f"Wikipedia API returned {response.status_code} for {character_name}")
             return None
+
+        data = response.json()
+
+        thumb = data.get('thumbnail', {}).get('source')
+        if thumb:
+            logger.info(f"Using summary thumbnail for {character_name}: {thumb}")
+            return thumb
+
+        original = data.get('originalimage', {}).get('source')
+        if original:
+            logger.info(f"Falling back to full-size image for {character_name}: {original}")
+            return original
+
+        logger.warning(f"Wikipedia page found for {character_name} but no image available")
+        return None
 
     except Exception as e:
         logger.error(f"Error fetching Wikipedia image for {character_name}: {e}")
         return None
+
 
 def get_character_image_url(character_name: str, gpt_suggested_url: Optional[str] = None) -> str:
     """

@@ -4,7 +4,7 @@ from .db import Base, engine, SessionLocal
 from .models import Puzzle, UserSession
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
-from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, record_used_character, update_used_character_date
+from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, record_used_character, update_used_character_date, get_wikipedia_image
 from datetime import datetime, date
 import pytz, hmac, hashlib, json, secrets
 import logging
@@ -269,6 +269,69 @@ def rotate(admin_key: str = Depends(verify_admin_key)):
                 status_code=500,
                 detail="Internal server error during puzzle creation"
             )
+
+@app.post("/admin/refresh-images")
+def refresh_images(
+    admin_key: str = Depends(verify_admin_key),
+    limit: int = 200,
+    dry_run: bool = False,
+):
+    """
+    Re-resolve stored portrait URLs for existing puzzles.
+
+    Puzzles generated before the thumbnail change point at full-size Wikipedia
+    originals, routinely 0.5-2 MB, which on a phone is indistinguishable from
+    the portrait never loading. This re-runs the lookup for existing rows so the
+    back catalogue benefits too. Safe to re-run: a puzzle is only written when
+    the lookup returns a different, non-empty URL.
+
+    Pass dry_run=true to see what would change without writing.
+    """
+    updated, unchanged, failed = [], 0, []
+
+    with SessionLocal() as db:
+        puzzles = (
+            db.query(Puzzle)
+            .order_by(Puzzle.puzzle_date.desc())
+            .limit(limit)
+            .all()
+        )
+
+        for p in puzzles:
+            if not p.answer:
+                continue
+            try:
+                new_url = get_wikipedia_image(p.answer)
+            except Exception as e:
+                logger.warning(f"Image refresh failed for {p.answer}: {e}")
+                failed.append(p.answer)
+                continue
+
+            if not new_url or new_url == p.image_url:
+                unchanged += 1
+                continue
+
+            updated.append({
+                "puzzle_date": str(p.puzzle_date),
+                "character": p.answer,
+                "old_url": p.image_url,
+                "new_url": new_url,
+            })
+            if not dry_run:
+                p.image_url = new_url
+
+        if not dry_run and updated:
+            db.commit()
+            logger.info(f"Refreshed {len(updated)} puzzle image URLs")
+
+    return {
+        "status": "dry_run" if dry_run else "updated",
+        "examined": len(updated) + unchanged + len(failed),
+        "updated": len(updated),
+        "unchanged": unchanged,
+        "failed": failed,
+        "changes": updated,
+    }
 
 @app.get("/puzzle/today", response_model=PublicPuzzle)
 def get_puzzle_today(figurdle_session: str = Cookie(None)):

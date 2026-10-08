@@ -183,18 +183,59 @@ def get_character_image_url(character_name: str, gpt_suggested_url: Optional[str
 class CharacterGenerationError(Exception):
     pass
 
+class OpenAIUnavailableError(CharacterGenerationError):
+    """
+    Raised when OpenAI cannot serve us at all: no credits, bad key, revoked access.
+
+    These are account-level conditions, not transient faults. Retrying them only
+    burns wall-clock time, so they abort the whole generation run immediately
+    rather than being retried per-call and then again per-attempt.
+    """
+    pass
+
+# Substrings that identify a permanent, account-level failure. Matched against the
+# text of the exception because the OpenAI SDK surfaces these as generic APIError
+# subclasses with the useful detail only in the message body.
+_NON_RETRYABLE_MARKERS = (
+    "insufficient_quota",
+    "credit_balance_exhausted",
+    "no credits remaining",
+    "invalid_api_key",
+    "incorrect api key",
+    "account_deactivated",
+    "billing_hard_limit_reached",
+)
+
+def is_non_retryable_openai_error(e: Exception) -> bool:
+    """True when retrying this error can never succeed."""
+    status = getattr(e, "status_code", None) or getattr(getattr(e, "response", None), "status_code", None)
+    if status in (401, 403):
+        return True
+
+    text = str(e).lower()
+    return any(marker in text for marker in _NON_RETRYABLE_MARKERS)
+
 def call_openai_with_retry(openai_client, **kwargs):
-    """Call OpenAI API with exponential backoff retry logic."""
+    """Call OpenAI API with exponential backoff retry logic.
+
+    Transient faults are retried. Permanent ones fail fast: a quota or auth error
+    retried 3 times per call across 15 attempts costs ~45 doomed requests and over
+    a minute of sleeping before the caller ever learns it was hopeless.
+    """
     max_retries = 3
     base_delay = 1
-    
+
     for attempt in range(max_retries):
         try:
             return openai_client.chat.completions.create(**kwargs)
         except Exception as e:
+            if is_non_retryable_openai_error(e):
+                logger.error(f"OpenAI is unavailable and retrying cannot help: {e}")
+                raise OpenAIUnavailableError(str(e)) from e
+
             if attempt == max_retries - 1:
                 raise e
-            
+
             # Exponential backoff with jitter
             delay = base_delay * (2 ** attempt) + random.uniform(0, 1)
             logger.warning(f"OpenAI API call failed (attempt {attempt + 1}), retrying in {delay:.2f}s: {e}")
@@ -882,6 +923,14 @@ def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
                            f"(Score: {evaluation['familiarity_score']}/10, Threshold: {min_score}, "
                            f"Reason: {evaluation.get('reasoning', 'N/A')})")
 
+        except OpenAIUnavailableError:
+            # No credits / bad key. Every remaining attempt would fail identically,
+            # so stop now instead of spending another 14 rounds of retries on it.
+            logger.error(
+                f"Aborting generation at attempt {attempt + 1}/15: OpenAI is unavailable "
+                f"at the account level. Not retrying."
+            )
+            raise
         except Exception as e:
             failure_reasons["other_error"] += 1
             logger.warning(f"Attempt {attempt + 1}/15 failed with error: {e}")
@@ -892,8 +941,10 @@ def generate_daily_character_with_ai_evaluation() -> Dict[str, any]:
                f"{failure_reasons['too_obscure']} too obscure, "
                f"{failure_reasons['other_error']} errors.")
 
-    # Only cycle if failures are primarily due to duplicates
-    if failure_reasons["duplicate"] > 0:
+    # Cycle whenever the attempt loop came up empty. This was previously gated on
+    # failure_reasons["duplicate"] > 0, which meant the fallback was skipped for
+    # every failure mode except the one it was least needed for.
+    if failure_reasons["duplicate"] or failure_reasons["too_obscure"] or failure_reasons["other_error"]:
         oldest_character = get_oldest_reusable_character()
 
         if oldest_character:

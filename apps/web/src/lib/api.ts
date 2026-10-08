@@ -1,5 +1,18 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8080";
 
+/**
+ * Thrown when the backend has no puzzle for today yet. Distinct from a generic
+ * failure because it is expected and recoverable: generation runs behind the
+ * request, so the puzzle usually appears on a retry a moment later.
+ */
+export class PuzzleNotReadyError extends Error {
+  readonly code = "puzzle_not_ready";
+  constructor(message: string) {
+    super(message);
+    this.name = "PuzzleNotReadyError";
+  }
+}
+
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
@@ -8,7 +21,31 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+
+    // FastAPI nests our structured errors under `detail`.
+    let detail: unknown;
+    try {
+      detail = JSON.parse(text)?.detail;
+    } catch {
+      detail = undefined;
+    }
+
+    if (
+      res.status === 503 &&
+      typeof detail === "object" &&
+      detail !== null &&
+      (detail as { code?: string }).code === "puzzle_not_ready"
+    ) {
+      throw new PuzzleNotReadyError(
+        (detail as { message?: string }).message || "Today's figure isn't ready yet."
+      );
+    }
+
+    const message =
+      typeof detail === "string"
+        ? detail
+        : text || res.statusText;
+    throw new Error(`HTTP ${res.status}: ${message}`);
   }
   return res.json() as Promise<T>;
 }

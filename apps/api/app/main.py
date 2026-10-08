@@ -4,9 +4,9 @@ from .db import Base, engine, SessionLocal
 from .models import Puzzle, UserSession
 from .schemas import PublicPuzzle, GuessIn, GuessOut
 from .config import settings
-from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, record_used_character, update_used_character_date, get_wikipedia_image
-from datetime import datetime, date
-import pytz, hmac, hashlib, json, secrets
+from .ai import generate_daily_character_with_ai_evaluation, CharacterGenerationError, OpenAIUnavailableError, record_used_character, update_used_character_date, get_wikipedia_image
+from datetime import datetime, date, timedelta
+import pytz, hmac, hashlib, json, secrets, threading
 import logging
 import time
 import traceback
@@ -213,6 +213,148 @@ def generation_status(admin_key: str = Depends(verify_admin_key)):
             "hints_count": len(p.hints)
         }
 
+# Generation is slow and external. Keeping it out of the request path is what makes
+# page loads fast: a stored puzzle is a ~0.2s database read, while generating one
+# inline meant every visitor waited on OpenAI (and, when OpenAI was down, waited
+# ~60s for a 503). One lock means a burst of visitors triggers one generation, not
+# one per visitor.
+_generation_lock = threading.Lock()
+_generation_in_flight = False
+
+def _persist_generated_puzzle(db, target_date):
+    """Generate a puzzle for target_date and store it. Caller owns the session."""
+    character_data = generate_daily_character_with_ai_evaluation()
+
+    p = Puzzle(
+        puzzle_date=target_date,
+        answer=character_data["answer"],
+        aliases=character_data["aliases"],
+        hints=character_data["hints"],
+        source_urls=character_data["source_urls"],
+        image_url=character_data.get("image_url"),
+    )
+    db.add(p)
+    db.commit()
+
+    if character_data.get("is_cycled"):
+        update_used_character_date(character_data["answer"], target_date)
+    else:
+        record_used_character(character_data, target_date)
+
+    logger.info(f"Stored puzzle for {target_date}: {character_data['answer']}")
+    return p
+
+def _generate_in_background(target_date):
+    """Self-heal a missing puzzle without blocking the request that noticed it."""
+    global _generation_in_flight
+    try:
+        with SessionLocal() as db:
+            if db.query(Puzzle).filter(Puzzle.puzzle_date == target_date).one_or_none():
+                return
+            _persist_generated_puzzle(db, target_date)
+    except OpenAIUnavailableError as e:
+        logger.error(f"Background generation for {target_date} aborted, OpenAI unavailable: {e}")
+    except Exception as e:
+        logger.error(f"Background generation for {target_date} failed: {e}")
+    finally:
+        with _generation_lock:
+            _generation_in_flight = False
+
+def request_background_generation(target_date):
+    """Start generation unless one is already running. Never blocks."""
+    global _generation_in_flight
+    with _generation_lock:
+        if _generation_in_flight:
+            return False
+        _generation_in_flight = True
+
+    threading.Thread(
+        target=_generate_in_background, args=(target_date,), daemon=True
+    ).start()
+    return True
+
+PUZZLE_BUFFER_DAYS = 3
+
+def buffer_status(db):
+    """How many consecutive days from today forward already have a puzzle."""
+    start = today_pst()
+    covered = 0
+    for offset in range(PUZZLE_BUFFER_DAYS + 1):
+        target = start + timedelta(days=offset)
+        if db.query(Puzzle).filter(Puzzle.puzzle_date == target).one_or_none():
+            covered += 1
+        else:
+            break
+    return covered
+
+@app.get("/admin/health-check")
+def puzzle_health_check(admin_key: str = Depends(verify_admin_key)):
+    """
+    Whether the daily pipeline is actually keeping up.
+
+    The scheduler failed silently for a week because nothing watched its output.
+    Point an uptime check at this: it returns 503 the moment today's puzzle is
+    missing, so a broken pipeline pages someone instead of going unnoticed.
+    """
+    with SessionLocal() as db:
+        today = today_pst()
+        has_today = db.query(Puzzle).filter(Puzzle.puzzle_date == today).one_or_none() is not None
+        latest = db.query(Puzzle).order_by(Puzzle.puzzle_date.desc()).first()
+        covered = buffer_status(db)
+
+        body = {
+            "healthy": has_today,
+            "today": str(today),
+            "has_today": has_today,
+            "latest_puzzle_date": str(latest.puzzle_date) if latest else None,
+            "days_stale": (today - latest.puzzle_date).days if latest else None,
+            "buffer_days_covered": covered,
+            "buffer_target": PUZZLE_BUFFER_DAYS,
+        }
+
+        if not has_today:
+            raise HTTPException(status_code=503, detail=body)
+        return body
+
+@app.post("/admin/fill-buffer")
+def fill_buffer(admin_key: str = Depends(verify_admin_key)):
+    """
+    Generate puzzles for today and the next few days.
+
+    A buffer is what turns an OpenAI outage from an outage into a non-event: the
+    scheduler can fail, or billing can lapse, and the site keeps serving a real
+    puzzle each day until the buffer drains. Safe to call repeatedly - days that
+    already have a puzzle are skipped.
+    """
+    created, skipped, failed = [], [], None
+
+    with SessionLocal() as db:
+        for offset in range(PUZZLE_BUFFER_DAYS + 1):
+            target = today_pst() + timedelta(days=offset)
+
+            if db.query(Puzzle).filter(Puzzle.puzzle_date == target).one_or_none():
+                skipped.append(str(target))
+                continue
+
+            try:
+                p = _persist_generated_puzzle(db, target)
+                created.append({"date": str(target), "character": p.answer})
+            except OpenAIUnavailableError as e:
+                # Permanent. Stop immediately rather than repeating it per day.
+                db.rollback()
+                failed = {"date": str(target), "reason": "openai_unavailable", "detail": str(e)}
+                break
+            except Exception as e:
+                db.rollback()
+                failed = {"date": str(target), "reason": "generation_failed", "detail": str(e)}
+                break
+
+    status_code = 200 if created or skipped else 503
+    body = {"created": created, "skipped": skipped, "failed": failed}
+    if status_code == 503:
+        raise HTTPException(status_code=503, detail=body)
+    return body
+
 @app.post("/admin/rotate")
 def rotate(admin_key: str = Depends(verify_admin_key)):
     """Generate today's puzzle using AI character generation."""
@@ -347,39 +489,20 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
     with SessionLocal() as db:
         p = db.query(Puzzle).filter(Puzzle.puzzle_date == today_pst()).one_or_none()
         if not p:
-            try:
-                logger.info(f"No puzzle found for {today_pst()}, generating automatically...")
-                character_data = generate_daily_character_with_ai_evaluation()
+            # Kick generation off behind the request rather than inside it, then
+            # answer immediately. The visitor gets a fast, honest response and the
+            # next load picks up the puzzle once it lands.
+            logger.warning(f"No puzzle stored for {today_pst()}; requesting background generation")
+            request_background_generation(today_pst())
 
-                p = Puzzle(
-                    puzzle_date=today_pst(),
-                    answer=character_data["answer"],
-                    aliases=character_data["aliases"],
-                    hints=character_data["hints"],
-                    source_urls=character_data["source_urls"],
-                    image_url=character_data.get("image_url")
-                )
-
-                db.add(p)
-                db.commit()
-
-                # Handle character tracking based on whether it's new or cycled
-                if character_data.get("is_cycled"):
-                    update_used_character_date(character_data["answer"], today_pst())
-                    logger.info(f"Auto-generated puzzle with cycled character: {character_data['answer']}")
-                else:
-                    record_used_character(character_data, today_pst())
-                    logger.info(f"Auto-generated puzzle: {character_data['answer']}")
-
-            except CharacterGenerationError as e:
-                logger.error(f"Auto-generation failed: {e}")
-                logger.error(f"Full traceback: {traceback.format_exc()}")
-                raise HTTPException(503, f"Puzzle generation failed: {str(e)}")
-            except Exception as e:
-                logger.error(f"Unexpected error during auto-generation: {e}")
-                logger.error(f"Full traceback: {traceback.format_exc()}")
-                db.rollback()
-                raise HTTPException(503, "Puzzle service temporarily unavailable")
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "code": "puzzle_not_ready",
+                    "message": "Today's figure isn't ready yet.",
+                    "puzzle_date": str(today_pst()),
+                },
+            )
 
         # Check if user has a session to determine what hints to include
         revealed_hints = []

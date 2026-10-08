@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import {
   getTodayPuzzle, getPuzzleByDate, submitGuess, getSessionStatus, completeSession, updateProgress,
+  PuzzleNotReadyError,
   type PublicPuzzle, type GuessOut, type SessionStatus
 } from "../lib/api";
 import GameHeader from "../components/GameHeader";
@@ -16,6 +17,7 @@ export default function Home() {
   const [puzzle, setPuzzle] = useState<PublicPuzzle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notReady, setNotReady] = useState(false);
   const [result, setResult] = useState<GuessOut | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [hints, setHints] = useState<string[]>([]); // local revealed hints
@@ -103,7 +105,11 @@ export default function Home() {
         }
 
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Failed to load puzzle");
+        if (e instanceof PuzzleNotReadyError) {
+          setNotReady(true);
+        } else {
+          setError(e instanceof Error ? e.message : "Failed to load puzzle");
+        }
       } finally {
         setLoading(false);
       }
@@ -329,6 +335,38 @@ export default function Home() {
             </div>
           </div>
           <p className="label text-center">Loading the day&apos;s figure</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Expected, recoverable: generation runs behind the request, so the puzzle
+  // usually lands within a minute. Offer the Archive rather than a dead end.
+  if (notReady) {
+    return (
+      <div className="min-h-[100dvh]">
+        <div className={shell}>
+          <GameHeader onSelectDate={handleDateSelection} currentDate={undefined} />
+          <main className="flex flex-col gap-5 border border-rule bg-placard p-7 shadow-plate">
+            <h1 className="font-display text-xl font-medium">
+              Today&apos;s figure isn&apos;t ready yet
+            </h1>
+            <p className="text-base text-ink-muted">
+              It&apos;s being prepared now. Check back in a minute, or play any
+              previous puzzle from the Archive.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="border border-accent bg-accent px-5 py-3 font-sans text-sm
+                           font-semibold uppercase tracking-label text-accent-contrast
+                           transition-opacity duration-fast hover:opacity-85 active:translate-y-px"
+              >
+                Check again
+              </button>
+            </div>
+          </main>
         </div>
       </div>
     );

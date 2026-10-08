@@ -307,7 +307,9 @@ def puzzle_health_check(admin_key: str = Depends(verify_admin_key)):
             "today": str(today),
             "has_today": has_today,
             "latest_puzzle_date": str(latest.puzzle_date) if latest else None,
-            "days_stale": (today - latest.puzzle_date).days if latest else None,
+            # Floored at 0: once the buffer runs ahead of today this goes negative,
+            # which would read as "fresh" to an alert rule written as days_stale > N.
+            "days_stale": max(0, (today - latest.puzzle_date).days) if latest else None,
             "buffer_days_covered": covered,
             "buffer_target": PUZZLE_BUFFER_DAYS,
         }

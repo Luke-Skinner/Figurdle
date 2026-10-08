@@ -549,7 +549,15 @@ def get_puzzle_today(figurdle_session: str = Cookie(None)):
 def get_available_puzzles():
     """Get list of all available puzzle dates for past puzzles feature"""
     with SessionLocal() as db:
-        puzzles = db.query(Puzzle).order_by(Puzzle.puzzle_date.desc()).all()
+        # Puzzles are generated days ahead so an OpenAI outage drains a buffer
+        # instead of taking the site down. Those future rows must never be listed:
+        # the Archive would otherwise offer tomorrow's puzzle today.
+        puzzles = (
+            db.query(Puzzle)
+            .filter(Puzzle.puzzle_date <= today_pst())
+            .order_by(Puzzle.puzzle_date.desc())
+            .all()
+        )
         return {
             "puzzles": [
                 {
@@ -570,6 +578,12 @@ def get_puzzle_by_date(date_str: str, figurdle_session: str = Cookie(None)):
         puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(400, "Invalid date format. Use YYYY-MM-DD")
+
+    # A buffered puzzle exists in storage before its release date. Serving it would
+    # let anyone play ahead and brute-force /guess to learn a future answer, so an
+    # unreleased date is indistinguishable from a nonexistent one.
+    if puzzle_date > today_pst():
+        raise HTTPException(404, f"No puzzle found for date {date_str}")
 
     with SessionLocal() as db:
         p = db.query(Puzzle).filter(Puzzle.puzzle_date == puzzle_date).one_or_none()
@@ -638,6 +652,12 @@ def post_guess(g: GuessIn, request: Request):
         puzzle_date = dt.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(400, "Invalid date format in query parameter")
+
+    # Defence in depth. Signatures are deterministic per (date, hints_count) and do
+    # not expire, so one captured for a buffered future date would otherwise stay
+    # usable. Refuse unreleased dates here as well as on the read paths.
+    if puzzle_date > today_pst():
+        raise HTTPException(404, f"No puzzle found for date {date_str}")
 
     with SessionLocal() as db:
         p = db.query(Puzzle).filter(Puzzle.puzzle_date == puzzle_date).one_or_none()
